@@ -1,1 +1,1 @@
-# topstepx-mcp
+# projectx-mcp
