@@ -1,0 +1,362 @@
+{
+	"info": {
+		"_postman_id": "15382f81-7e4c-44c7-ba60-5e20b4b34937",
+		"name": "ProjectX",
+		"description": "ProjectX Gateway API (TopstepX). Set username and apiKey, run Authenticate once; the token is stored in {{token}} and used by every other request. Docs: https://gateway.docs.projectx.com/docs/intro",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "593968"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://api.topstepx.com"
+		},
+		{
+			"key": "username",
+			"value": ""
+		},
+		{
+			"key": "apiKey",
+			"value": ""
+		},
+		{
+			"key": "token",
+			"value": ""
+		},
+		{
+			"key": "accountId",
+			"value": ""
+		}
+	],
+	"item": [
+		{
+			"name": "Authenticate",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "text/plain",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"userName\": \"{{username}}\",\n    \"apiKey\": \"{{apiKey}}\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/Auth/loginKey",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"Auth",
+						"loginKey"
+					]
+				},
+				"auth": {
+					"type": "noauth"
+				}
+			},
+			"response": [],
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"// Save the session token for every other request in this collection.",
+							"const body = pm.response.json();",
+							"if (body.success && body.token) pm.collectionVariables.set(\"token\", body.token);"
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Validate",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "text/plain",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/Auth/validate",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"Auth",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Search For Accounts",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "text/plain",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"onlyActiveAccounts\": true\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/Account/search",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"Account",
+						"search"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Available",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "text/plain",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"live\": false\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/Contract/available",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"Contract",
+						"available"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Order",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "text/plain",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"accountId\": {{accountId}}, // Replace with your actual account ID\n  \"contractId\": \"CON.F.US.ENQ.U25\", // Replace with the contract ID you want to trade\n  \"type\": 2, // Market order\n  \"side\": 0, // 0 - Bid (buy), 1 = Ask (sell)\n  \"size\": 1 // Size of the order\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/Order/place",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"Order",
+						"place"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Retrieve Bars",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "text/plain",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"contractId\": \"CON.F.US.ENQ.U25\",\n    \"live\": false,\n    \"startTime\": \"2025-07-16T00:00:00Z\",\n    \"endTime\": \"2025-07-16T21:00:00Z\",\n    \"unit\": 3,\n    \"unitNumber\": 1,\n    \"limit\": 7,\n    \"includePartialBar\": false\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/History/retrieveBars",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"History",
+						"retrieveBars"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Open Positions",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "text/plain",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"accountId\": {{accountId}}\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/Position/searchOpen",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"Position",
+						"searchOpen"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Close Positions",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "text/plain",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"accountId\": {{accountId}},\n    \"contractId\": \"CON.F.US.ENQ.U25\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/Position/closeContract",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"Position",
+						"closeContract"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

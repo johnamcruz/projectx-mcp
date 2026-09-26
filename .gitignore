@@ -216,3 +216,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Node
+node_modules/
+*.tsbuildinfo
+
+# Local trading journal (may contain account details)
+journal.jsonl
