@@ -125,11 +125,13 @@ ChatGPT connects to remote MCP servers over HTTPS only, so this takes two steps.
 # in .env: credentials plus
 MCP_HTTP_AUTH_TOKEN=$(openssl rand -hex 32)   # paste the generated value
 
+NGROK_AUTHTOKEN=<your ngrok authtoken>        # optional: built-in ngrok tunnel
+NGROK_DOMAIN=<name>.ngrok.app                 # optional: reserved domain for a stable URL
+
 npm run start:http                              # listens on http://127.0.0.1:8787/mcp
-cloudflared tunnel --url http://127.0.0.1:8787  # or: ngrok http 8787
 ```
 
-The tunnel prints a public `https://…` URL.
+With `NGROK_AUTHTOKEN` set, the server opens the tunnel itself and logs `ngrok tunnel established: https://…/mcp/<MCP_HTTP_AUTH_TOKEN>`. Without it, run any tunnel yourself (`cloudflared tunnel --url http://127.0.0.1:8787` or `ngrok http 8787`). Either way you get a public `https://…` URL. Without `NGROK_DOMAIN`, ngrok assigns a new URL on every start, so you'd have to update the connector each time.
 
 **2. Add it to ChatGPT.** Turn on **Developer mode** (Settings → Apps & Connectors → Advanced settings), then create a connector:
 
@@ -145,6 +147,7 @@ ChatGPT's menu names change from time to time. If these steps don't match what y
 - `npm run start:http` (or `MCP_TRANSPORT=http`) serves Streamable HTTP at `/mcp` and a health check at `/healthz`.
 - `MCP_HTTP_AUTH_TOKEN` is **required** (16+ characters). Clients send `Authorization: Bearer <token>`, or put the token in the path (`/mcp/<token>`) if they can't set headers. Anyone with the token can trade your account. Treat the URL as a password and rotate the token if it leaks.
 - `HOST` and `PORT` default to `127.0.0.1:8787`. Keep the loopback bind and expose it through a tunnel instead of binding to `0.0.0.0`.
+- `NGROK_AUTHTOKEN` (optional) starts a built-in ngrok tunnel to that address; `NGROK_DOMAIN` pins it to a reserved domain. It uses the optional `@ngrok/ngrok` dependency, so no separate ngrok binary is needed.
 
 ## Recommended rollout
 

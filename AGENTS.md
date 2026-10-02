@@ -100,6 +100,7 @@ Use `get_performance` over longer windows (week, month) to check whether a setup
   - `src/journal.ts`: JSONL journal
   - `src/performance.ts`: trade statistics
   - `src/http.ts`: Streamable HTTP transport
+  - `src/tunnel.ts`: optional ngrok tunnel for HTTP mode
   - `src/index.ts`: entry point
 - **API reference:** https://gateway.docs.projectx.com/docs/category/api-reference. `postman/ProjectX.postman_collection.json` has example requests.
 - **Rules:**
