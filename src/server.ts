@@ -15,6 +15,9 @@ import {
 import { JOURNAL_KINDS, Journal, RECORD_CAP_MS, bounded } from "./journal.js";
 import { summarizeTrades, type Trade } from "./performance.js";
 import { CALL_BUDGET_MS, MIN_BRACKET_TICKS, PLACE_BY_MS, positionOn, protectionFlow, signedBrackets, type Protection } from "./protect.js";
+import type { FlowFeed } from "./flowfeed.js";
+import { registerFlowTools } from "./flowtools.js";
+import { describeError, failure, handler, json } from "./tooling.js";
 import type { QuoteSource } from "./realtime.js";
 import {
   RiskError,
@@ -41,6 +44,8 @@ export interface Deps {
   warn?: (line: string) => void;
   /** Tick sizes per contract, cached for the process lifetime (one per server if absent). */
   ticks?: TickSizes;
+  /** Live order-flow feed (trades, L1, L2), subscribed lazily per contract by the flow tools. */
+  flow?: FlowFeed;
 }
 
 const INSTRUCTIONS = `ProjectX / TopstepX futures trading server. You are trading real (or evaluation) futures accounts on the user's behalf.
@@ -48,25 +53,6 @@ Workflow: get_server_config -> list_accounts -> search_contracts -> get_bars/get
 Rules: always define the stop before entry; prefer micro contracts (MNQ, MES) while learning; never average down; flatten before the session closes unless the plan says otherwise; stop trading after hitting the daily loss limit.
 Server-side guardrails (max order size, max position, daily loss, allowed accounts/symbols) may refuse orders; respect them, do not try to work around them.
 Read the resource projectx://guide for the full operating guide.`;
-
-const json = (data: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] });
-const failure = (message: string) => ({ content: [{ type: "text" as const, text: message }], isError: true });
-
-function describeError(e: unknown): string {
-  if (e instanceof RiskError) return `Blocked by risk guardrail: ${e.message}`;
-  if (e instanceof ProjectXError) return e.message;
-  return e instanceof Error ? e.message : String(e);
-}
-
-function handler<A>(fn: (args: A) => Promise<unknown>) {
-  return async (args: A) => {
-    try {
-      return json(await fn(args));
-    } catch (e) {
-      return failure(describeError(e));
-    }
-  };
-}
 
 const PLACE_ERRORS: Record<number, string> = {
   0: "Success", 1: "AccountNotFound", 2: "OrderRejected", 3: "InsufficientFunds", 4: "AccountViolation",
@@ -518,6 +504,10 @@ export function createServer(deps: Deps): McpServer {
         : { contractId: id, quote: null, note: "No quote received. The market may be closed; use get_bars for the last prices." };
     }),
   );
+
+  // ── Order flow (L1, L2, prints, per-minute flow, footprint) ─────────
+
+  registerFlowTools(server, { config, flow: deps.flow, now, warn });
 
   // ── Orders, positions, trades (read) ────────────────────────────────
 

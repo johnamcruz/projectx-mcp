@@ -120,6 +120,43 @@ What this means for you:
 - Keep stops sized to the whole position after a partial fill or an add.
 - If you see a `reconcile` entry in the journal, review why the position had no stop. A "close failed" note means the position may still be open: check it.
 
+### Order flow: L1, L2, prints, per-minute flow, footprint
+
+Five read-only tools serve live order flow from the market hub (SignalR; there is no REST equivalent):
+
+| Tool | What it returns |
+|---|---|
+| `get_top_of_book` | **L1**: best bid and best ask with sizes, last trade (price, size, aggressor side), spread in ticks, mid; each part with its time, `ageMs` and `source`. `history: n` adds the last n best bid/ask changes. |
+| `get_market_depth` | **L2**: the order book, best first per side, `{price, size, cumSize}` up to `levels` (default 10, at most 200 per side), spread, imbalance over `imbalanceLevels`, the book's `ageMs`, `valid` (both sides seen since the last reset or reconnect), `partial` (one side only so far) and `snapshot` (rebuilt after a Reset). `history: n` adds the last n per-level changes (adds and pulls). |
+| `get_trades` | Recent prints `{t, price, size, side}` (up to 5000 kept per contract). |
+| `get_order_flow` | Per-minute rows (UTC minutes) plus the session cumulative delta and coverage. |
+| `get_footprint` | Footprint bars of `barMinutes`: volume at price split by aggressor, POC, bar delta, imbalance flags. |
+
+**Data starts when the server subscribed.** The first flow call for a contract subscribes to its trades, depth and quotes and returns what it has, which is almost nothing at first; `coverage` says where the data starts. Ask again later for history. If the owner runs the flow recorder (`PROJECTX_FLOW_DIR` set), `get_order_flow` and `get_footprint` also read its recorded minutes, and each row says `source: "recorded"` or `"live"`. `get_trades`, `get_market_depth` and `get_top_of_book` are live only. At most 6 contracts can be subscribed at once; more are refused. An unknown contract id is refused before it takes a slot.
+
+What the per-minute fields mean:
+
+- `bv` / `sv`: volume of buy aggressors (lifted the ask) and sell aggressors (hit the bid). `delta = bv - sv`. `volume` and `trades` count every print; `vwap`, `high`, `low`, `maxPrint` (largest single print).
+- `largeBuyVolume` / `largeSellVolume`: volume of prints of at least `largePrint` contracts (default 10, per call).
+- `ofiTrades = (bv - sv) / (bv + sv)`, null with no volume.
+- `ofiQuote`: order-flow imbalance of the best bid/ask (Cont, Kukanov and Stoikov): bid size added or bid price up counts as buying pressure, ask size added or ask price down as selling pressure, summed over the minute. Only from a two-sided book; null when there was none in the minute.
+- `bookImbalance`: (bid size - ask size) / (bid size + ask size) over the top 5 levels, time-averaged over the minute while the book had both sides. Null otherwise.
+- `badTimestamps` / `sidelessVolume`: prints in the minute with an unusable timestamp, and volume with no known aggressor side. Either makes the minute incomplete.
+- `complete`: all of these hold:
+  - the trade subscription was confirmed at least 2 s before the minute started (in exchange time, if this machine's clock runs behind) and stayed connected through its end;
+  - the minute has settled: a trade message arrived after its end plus 2 s (more when prints arrive late), or, without one, 10 s have passed (more with late prints, at most 20 s);
+  - hub messages for the contract kept coming: one arrived after the settle point, and no gap between messages over 10 s touches the minute;
+  - the quote feed agrees with the prints: its session volume did not rise by more than the printed volume plus max(2 contracts, 2 %), and with no print in the minute the volume is known and flat and the last price did not change. A quote update for a print just before the boundary may land in the next minute: the previous minute's shortfall (prints minus quote volume) may explain only quote volume received within the lag window after the boundary (max(1 s, the median delay), at most 5 s), one minute back and only within one live interval; a minute with no prints must then stay flat to its end. A last-price change to that print's price within the same window is accepted;
+  - every print in it had a usable timestamp and a known side.
+
+  So the first partial minute after a subscribe, the current minute, any minute touching a disconnect, a silent stretch, a sleep of the machine, or a dead trade feed while quotes still move are incomplete. A complete minute with no trades is real zero volume: the quote feed confirms nothing traded. When the market is closed nothing arrives, so those minutes are incomplete, not zero. `coverage.live.tradeFeedMismatch` counts minutes the quote feed contradicted.
+- Once a minute is final its row never changes. A print that arrives later is counted in `coverage.live.latePrints`, and prints replayed after a reconnect in `replayedPrints`; neither is applied.
+- `cumDelta`: the running delta since the session start (17:00 CT). It is null whenever any minute since the session start is missing or incomplete, which is the case for the whole session if the server subscribed after 17:00 CT and no recording covers it. Never fill it in yourself.
+
+**Use a minute, or a bar, only when it is `complete`.** A footprint bar is complete only when every minute in it is. `coverage.gaps` lists the incomplete runs.
+
+Footprint imbalance: `buyImbalance` at price P when askVolume(P) >= `imbalanceRatio` (default 3) x bidVolume(P - 1 tick); `sellImbalance` when bidVolume(P) >= ratio x askVolume(P + 1 tick). A zero on the other side never flags.
+
 ### How to learn
 
 The journal is where learning happens. Write entries that future-you can act on:
@@ -140,6 +177,8 @@ Use `get_performance` over longer windows (week, month) to check whether a setup
 | `search_contracts` / `get_contract` / `list_available_contracts` | Contract IDs, tick size, tick value |
 | `get_bars` | Historical OHLCV bars |
 | `get_quote` | Real-time last/bid/ask (SignalR market hub) |
+| `get_top_of_book` / `get_market_depth` | L1 top of book / L2 order book, live |
+| `get_trades` / `get_order_flow` / `get_footprint` | Prints, per-minute order flow, footprint bars |
 | `list_open_orders` / `search_orders` | Working orders / order history |
 | `list_open_positions` | Open positions |
 | `search_trades` / `get_performance` | Fills / statistics (win rate, expectancy, profit factor) |
@@ -160,7 +199,13 @@ Use `get_performance` over longer windows (week, month) to check whether a setup
   - `src/reconcile.ts`: the REST protection check on a timer (coverage rule, own-trade scope from the journal, grace period, backoff, lock file)
   - `src/server.ts`: all MCP tools, the `projectx://guide` resource, and the `trading_session` prompt
   - `src/risk.ts`: guardrails and trading-day math (pure functions)
-  - `src/realtime.ts`: SignalR market hub quote cache
+  - `src/realtime.ts`: the SignalR market hub (one connection): quote cache, trade/depth/quote listeners, subscriptions restored on reconnect
+  - `src/orderflow.ts`: pure order-flow logic: payload parsing, the trade-side and DomType constants, the L2 `Book`, minute buckets and rows, quote OFI, completeness, cumulative delta, footprint, merging recorded and live minutes
+  - `src/flowfeed.ts`: the live feed per contract (prints, L1 history, L2 book and change history, minute buckets, live intervals), the contract cap, the roll, finalized minutes
+  - `src/flowtools.ts`: the five order-flow tools
+  - `src/flowstore.ts`: recorded flow files (CSV + JSONL), the deduplicating writer, bounded tail reads
+  - `src/recorder.ts`: `--record-flow` mode (lock, symbols, roll, writing)
+  - `src/tooling.ts`: tool result helpers shared by the tool modules
   - `src/journal.ts`: JSONL journal
   - `src/performance.ts`: trade statistics
   - `src/http.ts`: Streamable HTTP transport
@@ -191,4 +236,14 @@ Use `get_performance` over longer windows (week, month) to check whether a setup
     - **Lifecycle:** cycles never overlap. `index.ts` stops the timer and releases the lock on SIGINT/SIGTERM and on exit.
     - **Hands off orders:** it must not cancel orders while a position is open or sweep orders when flat.
   - `list_accounts` and `search_contracts` return arrays on success (the caller's broker interface depends on it). No accounts is an error; an empty contract search stays `[]` with one stderr line.
+  - **Order flow:**
+    - Only the recorder (`--record-flow`) writes flow files; MCP servers only read them, and subscribe lazily on the first flow call (never at startup).
+    - Hub callbacks never throw: payloads are parsed defensively (bad items are skipped and counted), listeners run in try/catch, and every promise from a timer or callback is caught.
+    - Every buffer is bounded (`FLOW_LIMITS` in `src/flowfeed.ts`, `MAX_BOOK_LEVELS`, `TAIL_MAX_BYTES`). Keep it that way.
+    - A minute is `complete` only per `minuteComplete` in `src/orderflow.ts` (live interval started `FINALIZE_GRACE_MS` before it in exchange time, settle point from `settlePoint`: a trade message after end + grace or else `RECORDER_GRACE_MS` plus the delay up to `MAX_RECORDER_GRACE_MS`, message watermark after it, no silence over `SILENCE_LIMIT_MS`), `tradeFeedCheck` (quote volume and last price agree with the prints) and `recordOf` (no bad timestamp, no sideless volume). MCP rows and recorded rows use the same rule. Once decided (`minuteDecided`) the verdict is frozen and late prints are never applied. Never loosen it: consumers rely on it to use a bar only when all its minutes are known.
+    - One hub connection: `MarketHub.connect` fails fast while a connection is connecting or reconnecting and builds a new one only after `onclose`; a stale connection's events are ignored. Two connections would count every print twice.
+    - Recorded files are read asynchronously and bounded: the JSONL only for the requested window, the CSV back to the session start for the cumulative delta. A partial last line is never data; the writer truncates it.
+    - A flow tool answers within 10 s: the contract check takes at most `VALIDATE_MS`, the first subscribe waits at most `SUBSCRIBE_WAIT_MS`, the tick lookup `TICK_LOOKUP_MS`.
+    - Tests drive the feed with `fakeFlowHub()` and `fakeClock()` from `test/helpers.ts`.
+    - **Unverified against the live hub:** GatewayQuote's `volume` being the session cumulative volume (the trade-feed cross-check relies on it); the `GatewayTrade` type mapping (`TRADE_SIDE_BY_TYPE`: 0 buy, 1 sell), the DomType enum (`DOM_TYPE`), and the payload fields (`price`, `volume`, `timestamp`, `type`; depth sizes from `volume`, not `currentVolume`). They come from the ProjectX docs; check them against real pushes before relying on the sides.
   - Tools take human-readable enum names (`buy`, `limit`, `minute`) and map them to API integers in `src/enums.ts`. Responses keep the numeric fields and add names next to them.

@@ -14,6 +14,7 @@ The model connects through the [ProjectX Gateway API](https://gateway.docs.proje
 | Session | `get_server_config`: is trading enabled, and what are the guardrails |
 | Accounts | `list_accounts`, `get_account_snapshot` (balance, positions, working orders, today's P&L vs. the loss limit) |
 | Market data | `search_contracts`, `get_contract`, `list_available_contracts`, `get_bars` (historical OHLCV), `get_quote` (real-time over SignalR) |
+| Order flow | `get_top_of_book` (L1), `get_market_depth` (L2 book), `get_trades` (prints), `get_order_flow` (per-minute buy/sell volume, delta, OFI, book imbalance, cumulative delta), `get_footprint` (volume at price, POC, imbalances); see [Order flow](#order-flow) |
 | Trading | `place_order` (market, limit, stop, trailing stop, join bid/ask, with optional brackets given as tick distances; after a bracketed market entry the server confirms the stop leg or closes the position), `modify_order`, `cancel_order`, `close_position` (also cancels the contract's working orders and verifies flat), `partial_close_position` |
 | History | `list_open_orders`, `search_orders`, `list_open_positions`, `search_trades` |
 | Learning | `get_performance` (win rate, expectancy, profit factor, by contract), `journal_add`, `journal_read` |
@@ -69,6 +70,52 @@ Two more protections run without the model asking:
 | `PROJECTX_RECONCILE_GRACE_SECONDS` | `15` | How long a position must stay uncovered (two checks this far apart), and how long after the last order on the contract (from any copy sharing the journal), before it is closed. |
 
 `list_accounts` returns an error, not an empty list, when the login has no accounts: "No accounts returned for this login (onlyActiveAccounts=…, API <host>). Check that the account is active at the firm and that PROJECTX_API_URL is the firm's gateway."
+
+## Order flow
+
+The order-flow tools read ProjectX's SignalR market hub (trades, depth and quotes), which has no REST equivalent. The server runs in one of two modes.
+
+**MCP mode (stdio or HTTP, the usual one): live snapshots.** The server subscribes to a contract on the first order-flow call for it, never at startup, so its data starts then. It checks the contract id first (an unknown one is refused and never takes a slot) and uses one SignalR connection, never a second one while it reconnects. It keeps the last 24 hours of minute rows, 5000 prints, 10,000 L1 changes and 20,000 L2 changes per contract, for at most 6 contracts. It never writes flow files. If `PROJECTX_FLOW_DIR` is set, `get_order_flow` and `get_footprint` also read the recorder's complete minutes from there (the tail of each file, never the whole file) and mark each row `source: "recorded"` or `"live"`; a recorded complete minute replaces a live one that isn't complete. Those reads are asynchronous and bounded: the JSONL only for the requested window, the small CSV rows back to the session start for the cumulative delta.
+
+**Recorder mode: `projectx-mcp --record-flow`.** A long-running process that serves no MCP. It subscribes the active contract of each symbol in `PROJECTX_FLOW_SYMBOLS` on one SignalR connection, re-resolves them at each trading-day start (17:00 CT, so a roll switches contracts), and appends every complete minute to `PROJECTX_FLOW_DIR`:
+
+- `<contractId>.csv`: `ISO-time,buy_volume,sell_volume`, no header, one row per complete minute (characters outside `A-Za-z0-9._-` in the id become `_`);
+- `<contractId>.jsonl`: the full minute row, including volume at price.
+
+Each minute is written once: on restart it reads the last complete line of each file and skips what is already there. A last line without its newline (a write cut short) is truncated away, never kept as data. Disconnects, silences and clock jumps are gaps, so a minute that touches one is never written. Only one recorder runs per directory (`recorder.lock`, taken over when its process is gone or its heartbeat is stale); a second one exits with a message. It needs both variables and exits with an error without them. It logs to stderr and stops cleanly on SIGINT/SIGTERM.
+
+```bash
+PROJECTX_FLOW_SYMBOLS=MNQ,MES PROJECTX_FLOW_DIR=~/.projectx-mcp/flow node dist/index.js --record-flow
+```
+
+[docs/FLOW-RECORDER.md](docs/FLOW-RECORDER.md) has a launchd example for running it as a background service on macOS.
+
+| Setting | Default | Effect |
+|---|---|---|
+| `PROJECTX_FLOW_SYMBOLS` | none | Root symbols the recorder subscribes, e.g. `MNQ,MES`. Recorder mode only. |
+| `PROJECTX_FLOW_DIR` | none | Where the recorder writes; MCP servers read recorded minutes from here. |
+| `PROJECTX_FLOW_LARGE_PRINT` | `10` | Large-print threshold in contracts (`largeBuyVolume` / `largeSellVolume`); a tool call can override it. |
+| `PROJECTX_FLOW_MAX_CONTRACTS` | `6` | Most contracts subscribed at once per process. |
+
+A minute is `complete` only when:
+
+- the trade subscription was confirmed before it started and stayed connected through its end;
+- the minute has settled: a trade message arrived after its end plus 2 s (extended by the measured print delay, up to 10 s more), or else 10 s passed (`RECORDER_GRACE_MS`, plus the delay, at most 20 s). The recorder and the live tools use the same rule;
+- hub messages for the contract kept arriving after the settle point, and no silence over 10 s (`SILENCE_LIMIT_MS`) touches the minute. A sleep or stall of the machine counts as a disconnect from the last message;
+- the trade feed agrees with the quote feed: the quote's session `volume` did not rise by more than the printed volume plus max(2 contracts, 2 %), and a minute with no prints needs that volume known and flat and an unchanged `lastPrice`. Quote volume is counted by arrival time and prints by exchange time, so the previous minute's shortfall may explain quote volume received within the lag window after the boundary (max(1 s, the median delay), at most 5 s; one minute back, one live interval only), and a `lastPrice` move to the previous minute's last print price within that window is accepted. A minute with no prints must stay flat after the window. This catches a trade subscription that died while quotes keep flowing (counted in `tradeFeedMismatch`);
+- the subscription started at least 2 s before the minute, measured in exchange time when this machine's clock is behind (warned once);
+- every print in it had a timestamp with an explicit offset within 60 s of its arrival, and a known aggressor side.
+
+Prints that arrive after their minute is final, or that are replayed after a reconnect, are counted and never applied. Minutes while the market is closed are incomplete (nothing arrives), so the recorder writes no rows for them. Consumers should use a bar only when all its minutes are complete.
+
+**Unverified against the live hub.** These come from the ProjectX docs and haven't been checked against real pushes yet:
+
+- the `GatewayTrade` `type` mapping: 0 = buy (aggressor lifted the ask), 1 = sell (`TRADE_SIDE_BY_TYPE` in `src/orderflow.ts`);
+- the DomType enum of `GatewayDepth`: 0 Unknown, 1 Ask, 2 Bid, 3 BestAsk, 4 BestBid, 5 Trade, 6 Reset, 7 Low, 8 High, 9 NewBestBid, 10 NewBestAsk, 11 Fill (`DOM_TYPE`);
+- the payload fields: trades `{symbolId, price, timestamp, type, volume}`, depth `{timestamp, type, price, volume, currentVolume}`, with the level size taken from `volume`;
+- that GatewayQuote's `volume` is the session cumulative volume;
+- that timestamps carry an explicit offset (`Z` or `±hh:mm`); one without is counted as bad;
+- the `Unsubscribe*` hub method names, and that `GatewayTrade` / `GatewayDepth` arrive as `(contractId, data)`.
 
 ## Setup
 

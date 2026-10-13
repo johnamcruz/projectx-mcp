@@ -6,7 +6,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { ProjectXError, type ApiEnvelope, type PostOptions } from "../src/client.js";
 import { loadConfig } from "../src/config.js";
 import { Journal } from "../src/journal.js";
-import type { QuoteSource } from "../src/realtime.js";
+import type { FeedKind, HubListener, QuoteSource } from "../src/realtime.js";
 import { createServer, type Deps } from "../src/server.js";
 
 export const OK = { success: true, errorCode: 0, errorMessage: null };
@@ -73,4 +73,42 @@ export async function setup(opts: { env?: Record<string, string>; routes?: Recor
     return { isError: !!res.isError, text, data };
   };
   return { api, journal, client, call, config, clock, warnings };
+}
+
+/** Fake market hub for the order-flow feed: subscriptions succeed unless `fail` says otherwise; push events by hand. */
+export function fakeFlowHub() {
+  const listeners = new Set<HubListener>();
+  const calls: Array<[string, FeedKind, string]> = [];
+  const each = (fn: (l: HubListener) => void) => {
+    for (const l of [...listeners]) fn(l);
+  };
+  const hub = {
+    calls,
+    listeners,
+    fail: (_kind: FeedKind, _id: string): Error | null => null,
+    /** When set, subscribe waits for this promise before answering. */
+    gate: null as Promise<void> | null,
+    addListener(l: HubListener) {
+      listeners.add(l);
+      return () => void listeners.delete(l);
+    },
+    async subscribe(kind: FeedKind, id: string) {
+      calls.push(["subscribe", kind, id]);
+      if (hub.gate) await hub.gate;
+      const err = hub.fail(kind, id);
+      if (err) throw err;
+      each((l) => l.subscribed?.(kind, id));
+    },
+    async unsubscribe(kind: FeedKind, id: string) {
+      calls.push(["unsubscribe", kind, id]);
+    },
+    trade: (id: string, data: unknown) => each((l) => l.trade?.(id, data)),
+    depth: (id: string, data: unknown) => each((l) => l.depth?.(id, data)),
+    quote: (id: string, data: Record<string, unknown>) => each((l) => l.quote?.(id, data)),
+    down: () => each((l) => l.down?.()),
+    /** The hub confirming a subscription again after a reconnect. */
+    resubscribed: (kind: FeedKind, id: string) => each((l) => l.subscribed?.(kind, id)),
+    subscribes: (kind?: FeedKind) => calls.filter(([op, k]) => op === "subscribe" && (!kind || k === kind)).map(([, k, id]) => `${k}:${id}`),
+  };
+  return hub;
 }
