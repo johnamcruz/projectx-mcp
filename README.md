@@ -46,6 +46,30 @@ These are enforced in the server, before any request reaches TopstepX:
 
 Blocked orders are journaled as `order_blocked` so the model can review them.
 
+Two more protections run without the model asking:
+
+- **Tick rounding.** TopstepX rejects off-grid prices, so `place_order` and `modify_order` round prices onto the contract's tick grid, always away from the market or a worse fill:
+  - Stops round down for a sell and up for a buy; limits round down for a buy and up for a sell.
+  - A stop-limit's limit rounds the same way as its stop, so it never moves past the trigger.
+  - `modify_order` reads the working order for its side and type. It passes `trailPrice` through unchanged, because a working trailing stop may read it back as a distance.
+  - A changed price is reported as `snapped: { <field>: { from, to } }` and journaled. If the tick size or the order can't be read, the price is sent unchanged.
+- **Protection check (reconcile).** With trading enabled, the server checks **its own trades** over REST every `PROJECTX_RECONCILE_SECONDS`.
+  - **Scope:** the account + contract pairs it sent an order on within the window: since the trading day started (17:00 CT) or the last 24 hours, whichever reaches further back, so an overnight hold stays in scope after a restart. It reads them from the tail of the journal (never the whole file): `place_order` and `modify_order` write an `order_sent` entry before each send (waiting at most 200 ms for the write), so copies of the server sharing a journal see each other's orders. A position on an account + contract pair it hasn't traded in the window is never touched. A manual position on a pair it did trade is in scope.
+  - **When it closes:** **a position of yours without a covering stop gets closed**. That is one not covered, for its whole size, by working stop or trailing-stop orders on the opposite side (a stop-limit doesn't count). It must be seen that way on two checks at least `PROJECTX_RECONCILE_GRACE_SECONDS` apart, with no order on that contract within the grace period, and a fresh read right before the close must confirm it.
+  - **How it closes:** the same flatten as `close_position`, after one last look at the journal tail for an order on that pair within the grace period.
+    - A successful close journals an `exit` tagged `reconcile` / `unprotected` and logs a warning.
+    - Flat with working orders left over: a `note` ("flat; legs left: <ids>"). Those orders (only ones whose cancel failed, never a new order) are cancelled again on later checks while the contract stays flat.
+    - A failed close journals a `note` ("close failed: …"). If the broker refused it, that contract waits 5 minutes. If there was no reply or it wasn't flat in time, it waits 1, then 2, then 5 minutes.
+  - **What it never does:** cancel orders on an open position, or touch orders when you're flat.
+  - **More than one copy:** if you run several copies against the same journal directory, only the copy holding `reconcile.lock` (next to the journal; taken over when stale or its process is gone) reads and closes positions.
+
+| Setting | Default | Effect |
+|---|---|---|
+| `PROJECTX_RECONCILE_SECONDS` | `30` | Seconds between protection checks (at least 5; smaller values are raised to 5). `0` turns it off. It never runs with trading disabled. |
+| `PROJECTX_RECONCILE_GRACE_SECONDS` | `15` | How long a position must stay uncovered (two checks this far apart), and how long after the last order on the contract (from any copy sharing the journal), before it is closed. |
+
+`list_accounts` returns an error, not an empty list, when the login has no accounts: "No accounts returned for this login (onlyActiveAccounts=…, API <host>). Check that the account is active at the firm and that PROJECTX_API_URL is the firm's gateway."
+
 ## Setup
 
 Requires Node.js 20.12 or later.

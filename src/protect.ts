@@ -1,6 +1,6 @@
 import { type ApiEnvelope, type PostOptions, type ProjectXClient } from "./client.js";
 import { ORDER_TYPES, SIDES } from "./enums.js";
-import type { Journal } from "./journal.js";
+import { RECORD_CAP_MS, bounded, type Journal } from "./journal.js";
 
 /** Smallest bracket distance place_order accepts, in ticks. */
 export const MIN_BRACKET_TICKS = 4;
@@ -73,6 +73,8 @@ export interface FlattenResult {
   /** Total open size at the end (null when it could not be read). */
   positionSize: number | null;
   cancelledOrderIds: number[];
+  /** Legs the cancel step tried and failed to cancel (never an order first seen after it). */
+  failedCancelOrderIds: number[];
   /** Working orders still on the contract (null when they could not be read). */
   remainingOrderIds: number[] | null;
 }
@@ -111,7 +113,7 @@ export function protectionFlow(d: FlowDeps) {
     ) ?? null;
 
   const note = (text: string, acct: number, contractId: string, data: unknown, orderId?: number) =>
-    journal.add({ kind: "note", text, accountId: acct, contractId, orderId, tags: ["protection"], data }).catch(() => {});
+    bounded(journal.add({ kind: "note", text, accountId: acct, contractId, orderId, tags: ["protection"], data }), RECORD_CAP_MS);
 
   /** Sleep one poll step if it still leaves time before `end`. */
   async function pollStep(end: number): Promise<boolean> {
@@ -136,7 +138,7 @@ export function protectionFlow(d: FlowDeps) {
       if (st?.size === 0 || !(await pollStep(deadline - FLAT_BY_MS))) break;
     }
     if (!st || st.size !== 0) {
-      return { status: "still_open", close, positionNet: st?.net ?? null, positionSize: st?.size ?? null, cancelledOrderIds: [], remainingOrderIds: null };
+      return { status: "still_open", close, positionNet: st?.net ?? null, positionSize: st?.size ?? null, cancelledOrderIds: [], failedCancelOrderIds: [], remainingOrderIds: null };
     }
 
     const legs = (await ordersOn(acct, contractId, 600, deadline - LEGS_BY_MS)) ?? [];
@@ -150,7 +152,9 @@ export function protectionFlow(d: FlowDeps) {
     const fin = p ? positionOn(p, contractId) : null;
     const remaining = left ? left.map((o) => o.id as number) : null;
     const status: FlatStatus = fin?.size !== 0 ? "still_open" : remaining === null || remaining.length ? "legs_left" : "flat";
-    return { status, close, positionNet: fin?.net ?? null, positionSize: fin?.size ?? null, cancelledOrderIds: cancelled.filter((x): x is number => x !== null), remainingOrderIds: remaining };
+    const cancelledIds = cancelled.filter((x): x is number => x !== null);
+    const failedCancelOrderIds = legs.map((o) => o.id as number).filter((id) => !cancelledIds.includes(id));
+    return { status, close, positionNet: fin?.net ?? null, positionSize: fin?.size ?? null, cancelledOrderIds: cancelledIds, failedCancelOrderIds, remainingOrderIds: remaining };
   }
 
   interface EntryInput {

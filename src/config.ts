@@ -13,6 +13,10 @@ export interface Config {
   maxPositionSize: number;
   maxDailyLoss: number;
   journalPath: string;
+  /** Seconds between protection checks (only with trading enabled); 0 turns it off. */
+  reconcileSeconds: number;
+  /** An uncovered position must be seen on two checks at least this far apart before it is flattened. */
+  reconcileGraceSeconds: number;
 }
 
 type Env = Record<string, string | undefined>;
@@ -62,7 +66,18 @@ export function loadConfig(env: Env = process.env): Config {
     maxPositionSize: num(env, "PROJECTX_MAX_POSITION_SIZE", 2),
     maxDailyLoss: num(env, "PROJECTX_MAX_DAILY_LOSS", 500),
     journalPath: expandHome(env.PROJECTX_JOURNAL_PATH?.trim() || "~/.projectx-mcp/journal.jsonl"),
+    reconcileSeconds: num(env, "PROJECTX_RECONCILE_SECONDS", 30),
+    reconcileGraceSeconds: num(env, "PROJECTX_RECONCILE_GRACE_SECONDS", 15),
   };
+}
+
+/** Smallest reconcile interval; a smaller non-zero setting is raised to this. */
+export const MIN_RECONCILE_SECONDS = 5;
+
+/** The reconcile interval in effect: 0 when off (trading disabled or set to 0), else at least MIN_RECONCILE_SECONDS. */
+export function reconcileInterval(c: Config): number {
+  if (!c.tradingEnabled || c.reconcileSeconds <= 0) return 0;
+  return Math.max(MIN_RECONCILE_SECONDS, c.reconcileSeconds);
 }
 
 /** Config safe to show the model: no credentials. */
@@ -77,5 +92,8 @@ export function publicConfig(c: Config) {
     maxPositionSize: c.maxPositionSize,
     maxDailyLoss: c.maxDailyLoss || "off",
     journalPath: c.journalPath,
+    // The protection check runs only with trading enabled.
+    reconcileSeconds: reconcileInterval(c) || "off",
+    reconcileGraceSeconds: c.reconcileGraceSeconds,
   };
 }
