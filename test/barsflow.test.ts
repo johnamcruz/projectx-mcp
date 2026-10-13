@@ -430,8 +430,10 @@ describe("get_bars order flow: bounds", () => {
     const { flow, release, unsubscribes, warnings } = slowRefusal(2);
     await flow.ensure(NQ, 10, { dropLateRefusal: true });
     const waiting = flow.ensure(NQ, 1_000, { dropLateRefusal: true });
+    // Attach the rejection check before release() rejects it, so it is never an unhandled rejection.
+    const refused = expect(waiting).rejects.toThrow(/Could not subscribe to CON\.F\.US\.ENQ\.Z26/);
     await release();
-    await expect(waiting).rejects.toThrow(/Could not subscribe to CON\.F\.US\.ENQ\.Z26/);
+    await refused;
     expect(unsubscribes()).toBe(3);
     expect(warnings.filter((w) => w.includes("subscribing trades"))).toHaveLength(1);
     expect(flow.contracts()).toEqual([]);
