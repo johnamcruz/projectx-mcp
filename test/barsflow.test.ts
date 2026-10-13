@@ -15,14 +15,14 @@ const NQ = "CON.F.US.ENQ.Z26";
 const iso = (t: number) => new Date(t).toISOString();
 const trade = (t: number, price: number, volume: number, type: number) => ({ price, volume, type, timestamp: iso(t) });
 
-async function barsSetup(o: { dir?: string; noFlow?: boolean; maxContracts?: number; bars?: number[]; rawTimes?: string[] } = {}) {
+async function barsSetup(o: { dir?: string; noFlow?: boolean; maxContracts?: number; bars?: number[]; rawTimes?: string[]; env?: Record<string, string> } = {}) {
   const hub = fakeFlowHub();
   const clock = fakeClock(S + 2 * MINUTE_MS + 10_000);
   const flow = new FlowFeed({ hub, now: clock.now, warn: () => {}, maxContracts: o.maxContracts, timers: { every: () => 1, cancel: () => {} } });
   const barTimes = o.bars ?? [S + 6 * MINUTE_MS, S + 2 * MINUTE_MS, S + 4 * MINUTE_MS];
   const s = await setup({
     clock,
-    env: o.dir ? { PROJECTX_FLOW_DIR: o.dir } : {},
+    env: { ...(o.dir ? { PROJECTX_FLOW_DIR: o.dir } : {}), ...o.env },
     deps: o.noFlow ? {} : { flow },
     routes: { "/api/History/retrieveBars": () => ({ ...OK, bars: (o.rawTimes ?? barTimes.map(iso)).map((t) => ({ t, o: 1, h: 2, l: 0.5, c: 1.5, v: 10 })) }) },
   });
@@ -228,6 +228,120 @@ describe("get_bars includeOrderFlow", () => {
     expect((await call("get_bars", { contractId: MNQ, includeOrderFlow: true, flowWindows: [1, 2, 3, 4, 5, 6] })).isError).toBe(true);
   });
 
+  describe("server defaults (PROJECTX_BARS_ORDER_FLOW, PROJECTX_BARS_FLOW_WINDOWS)", () => {
+    const ON = { PROJECTX_BARS_ORDER_FLOW: "true" };
+
+    it("default off: no env, no args gives plain bars and subscribes nothing", async () => {
+      const { call, hub, config } = await barsSetup();
+      expect(config).toMatchObject({ barsOrderFlow: false, barsFlowWindows: [] });
+      const res = await call("get_bars", { contractId: MNQ });
+      expect(res.data.orderFlow).toBeUndefined();
+      expect(res.data.bars[0].flow).toBeUndefined();
+      expect(hub.calls).toEqual([]);
+    });
+
+    it("env on with no args gives flow", async () => {
+      const { call, hub } = await barsSetup({ env: ON });
+      const res = await call("get_bars", { contractId: MNQ });
+      expect(res.isError).toBe(false);
+      expect(res.data.orderFlow).toMatchObject({ sourceContractId: NQ, windows: [] });
+      expect(res.data.bars.every((b: any) => b.flow && b.flow.windows)).toBe(true);
+      expect(hub.subscribes()).toEqual([`trades:${NQ}`, `depth:${NQ}`, `quotes:${NQ}`]);
+    });
+
+    it("an explicit includeOrderFlow: false wins over env on", async () => {
+      const { call, hub } = await barsSetup({ env: { ...ON, PROJECTX_BARS_FLOW_WINDOWS: "3" } });
+      const res = await call("get_bars", { contractId: MNQ, includeOrderFlow: false });
+      expect(res.data.orderFlow).toBeUndefined();
+      expect(res.data.bars[0].flow).toBeUndefined();
+      expect(hub.calls).toEqual([]);
+    });
+
+    it("env windows apply when the call passes none, with env flow or an explicit includeOrderFlow", async () => {
+      const a = await barsSetup({ env: { ...ON, PROJECTX_BARS_FLOW_WINDOWS: "5, 2" } });
+      const res = await a.call("get_bars", { contractId: MNQ });
+      expect(res.data.orderFlow.windows).toEqual([2, 5]);
+      expect(Object.keys(res.data.bars[0].flow.windows)).toEqual(["2", "5"]);
+      const b = await barsSetup({ env: { PROJECTX_BARS_FLOW_WINDOWS: "4" } });
+      expect((await b.call("get_bars", { contractId: MNQ })).data.orderFlow).toBeUndefined();
+      expect((await b.call("get_bars", { contractId: MNQ, includeOrderFlow: true })).data.orderFlow.windows).toEqual([4]);
+    });
+
+    it("explicit flowWindows win over env windows, including an explicit []", async () => {
+      const { call } = await barsSetup({ env: { ...ON, PROJECTX_BARS_FLOW_WINDOWS: "5,10" } });
+      expect((await call("get_bars", { contractId: MNQ, flowWindows: [3] })).data.orderFlow.windows).toEqual([3]);
+      expect((await call("get_bars", { contractId: MNQ, flowWindows: [] })).data.orderFlow.windows).toEqual([]);
+    });
+
+    it("get_server_config shows the defaults", async () => {
+      const { call } = await barsSetup({ env: { ...ON, PROJECTX_BARS_FLOW_WINDOWS: "5" } });
+      expect((await call("get_server_config")).data.flow).toMatchObject({ barsOrderFlow: true, barsFlowWindows: [5] });
+      const off = await barsSetup();
+      expect((await off.call("get_server_config")).data.flow).toMatchObject({ barsOrderFlow: false, barsFlowWindows: [] });
+    });
+
+    const base = { PROJECTX_USERNAME: "u", PROJECTX_API_KEY: "k" };
+    const W = (v: string) => () => loadConfig({ ...base, PROJECTX_BARS_FLOW_WINDOWS: v });
+    const F = (v: string) => () => loadConfig({ ...base, PROJECTX_BARS_ORDER_FLOW: v });
+
+    it("PROJECTX_BARS_ORDER_FLOW: trimmed, lowercased, empty is false, only true or false", () => {
+      expect(loadConfig({ ...base, PROJECTX_BARS_ORDER_FLOW: " TRUE " }).barsOrderFlow).toBe(true);
+      expect(loadConfig({ ...base, PROJECTX_BARS_ORDER_FLOW: "False" }).barsOrderFlow).toBe(false);
+      expect(loadConfig({ ...base, PROJECTX_BARS_ORDER_FLOW: "  " }).barsOrderFlow).toBe(false);
+      expect(F("yes")).toThrow('PROJECTX_BARS_ORDER_FLOW must be "true" or "false", got "yes"');
+      expect(F(" 1 ")).toThrow('PROJECTX_BARS_ORDER_FLOW must be "true" or "false", got "1"');
+    });
+
+    it("PROJECTX_BARS_FLOW_WINDOWS: trimmed items; blank is none", () => {
+      expect(loadConfig({ ...base, PROJECTX_BARS_FLOW_WINDOWS: " 1, 50 ,20" }).barsFlowWindows).toEqual([1, 50, 20]);
+      expect(loadConfig({ ...base, PROJECTX_BARS_FLOW_WINDOWS: "  " }).barsFlowWindows).toEqual([]);
+      expect(loadConfig({ ...base, PROJECTX_BARS_FLOW_WINDOWS: "1,2,3,4,5" }).barsFlowWindows).toEqual([1, 2, 3, 4, 5]);
+    });
+
+    it("PROJECTX_BARS_FLOW_WINDOWS: digits only, an empty item is invalid", () => {
+      const msg = (item: string) => `PROJECTX_BARS_FLOW_WINDOWS windows must be whole numbers from 1 to 50, got "${item}"`;
+      for (const item of ["0x10", "1e1", "+5", "5.0", "five", "-1"]) expect(W(item)).toThrow(msg(item));
+      expect(W("5,,20")).toThrow(msg(""));
+      expect(W("5,20,")).toThrow(msg(""));
+      // Digits are checked for every item before any range: "x" is reported, not "0".
+      expect(W("0,x")).toThrow(msg("x"));
+    });
+
+    it("PROJECTX_BARS_FLOW_WINDOWS: each window 1 to 50", () => {
+      const msg = (item: string) => `PROJECTX_BARS_FLOW_WINDOWS windows must be whole numbers from 1 to 50, got "${item}"`;
+      expect(W("0")).toThrow(msg("0"));
+      expect(W("51")).toThrow(msg("51"));
+      // Range is checked before duplicates.
+      expect(W("5,5,51")).toThrow(msg("51"));
+    });
+
+    it("PROJECTX_BARS_FLOW_WINDOWS: no duplicates, checked before the count", () => {
+      expect(W("5,5")).toThrow("PROJECTX_BARS_FLOW_WINDOWS has a duplicate window 5");
+      expect(W("05,5")).toThrow("PROJECTX_BARS_FLOW_WINDOWS has a duplicate window 5");
+      expect(W("1,2,3,4,5,6,1")).toThrow("PROJECTX_BARS_FLOW_WINDOWS has a duplicate window 1");
+    });
+
+    it("PROJECTX_BARS_FLOW_WINDOWS: at most 5 windows", () => {
+      expect(W("1,2,3,4,5,6")).toThrow(/^PROJECTX_BARS_FLOW_WINDOWS allows at most 5 windows$/);
+    });
+
+    it("get_bars' input descriptions are static: they never show env values", async () => {
+      const schema = async (env: Record<string, string>) => {
+        const { client } = await barsSetup({ env });
+        const tool = (await client.listTools()).tools.find((t) => t.name === "get_bars")!;
+        return tool;
+      };
+      const off = await schema({});
+      const on = await schema({ PROJECTX_BARS_ORDER_FLOW: "true", PROJECTX_BARS_FLOW_WINDOWS: "5,20" });
+      expect(on).toEqual(off);
+      const props = off.inputSchema.properties as Record<string, { description?: string; default?: unknown }>;
+      expect(props.includeOrderFlow.description).toContain("Default: the server's PROJECTX_BARS_ORDER_FLOW (false unless set)");
+      expect(props.flowWindows.description).toContain("Default: the server's PROJECTX_BARS_FLOW_WINDOWS (none unless set)");
+      expect(props.includeOrderFlow.default).toBeUndefined();
+      expect(props.flowWindows.default).toBeUndefined();
+    });
+  });
+
   it("answers within its wait when the hub never confirms the subscription", async () => {
     const { call, hub } = await barsSetup();
     hub.gate = new Promise(() => {});
@@ -316,8 +430,10 @@ describe("get_bars order flow: bounds", () => {
     const { flow, release, unsubscribes, warnings } = slowRefusal(2);
     await flow.ensure(NQ, 10, { dropLateRefusal: true });
     const waiting = flow.ensure(NQ, 1_000, { dropLateRefusal: true });
+    // Attach the rejection check before release() rejects it, so it is never an unhandled rejection.
+    const refused = expect(waiting).rejects.toThrow(/Could not subscribe to CON\.F\.US\.ENQ\.Z26/);
     await release();
-    await expect(waiting).rejects.toThrow(/Could not subscribe to CON\.F\.US\.ENQ\.Z26/);
+    await refused;
     expect(unsubscribes()).toBe(3);
     expect(warnings.filter((w) => w.includes("subscribing trades"))).toHaveLength(1);
     expect(flow.contracts()).toEqual([]);
