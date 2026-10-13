@@ -75,30 +75,41 @@ export function assertOrderSize(config: Config, size: number): void {
 }
 
 export interface ExposureInput {
-  /** Current net position: +long / -short. */
-  currentNet: number;
+  /** Current net position: +long / -short; null when a position is open but its direction is unknown. */
+  currentNet: number | null;
+  /** Total open size on the contract regardless of direction (used when currentNet is null). */
+  currentSize?: number;
   /** Sum of same-side resting entry orders (limit/join) on this contract. */
   pendingSameSide: number;
   side: "buy" | "sell";
   size: number;
 }
 
-/** Worst-case net position if this order and resting same-side entries all fill. */
-export function projectedNet({ currentNet, pendingSameSide, side, size }: ExposureInput): number {
+/** Worst-case net position if this order and resting same-side entries all fill (an unknown direction counts as the order's side). */
+export function projectedNet({ currentNet, currentSize = 0, pendingSameSide, side, size }: ExposureInput): number {
   const sign = side === "buy" ? 1 : -1;
-  return currentNet + sign * (pendingSameSide + size);
+  return (currentNet ?? sign * currentSize) + sign * (pendingSameSide + size);
 }
 
-/** True when the order moves the position further from flat. */
+/**
+ * True only when the order is on the opposite side of a known, non-zero net
+ * position and no larger than it: it can only shrink the position.
+ */
+export function reducesPosition({ currentNet, side, size }: ExposureInput): boolean {
+  if (currentNet === null || currentNet === 0) return false;
+  return Math.sign(currentNet) === (side === "buy" ? -1 : 1) && size <= Math.abs(currentNet);
+}
+
+/** True when the order opens, adds to, or reverses a position (anything that is not purely reducing). */
 export function increasesExposure(input: ExposureInput): boolean {
-  return Math.abs(projectedNet(input)) > Math.abs(input.currentNet);
+  return !reducesPosition(input);
 }
 
 export function assertPositionLimit(config: Config, input: ExposureInput): void {
   const projected = projectedNet(input);
   if (increasesExposure(input) && Math.abs(projected) > config.maxPositionSize) {
     throw new RiskError(
-      `Order would take net position to ${projected} (current ${input.currentNet}, resting same-side entries ${input.pendingSameSide}); ` +
+      `Order would take net position to ${projected} (current ${input.currentNet ?? `${input.currentSize}, direction unknown`}, resting same-side entries ${input.pendingSameSide}); ` +
         `PROJECTX_MAX_POSITION_SIZE is ${config.maxPositionSize}.`,
     );
   }

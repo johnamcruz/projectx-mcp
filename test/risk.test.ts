@@ -48,9 +48,19 @@ describe("guardrails", () => {
     expect(() => assertPositionLimit(c, { currentNet: 1, pendingSameSide: 1, side: "buy", size: 1 })).toThrow();
   });
 
-  it("treats a reversal through flat as increasing exposure only if it ends larger", () => {
-    expect(increasesExposure({ currentNet: 1, pendingSameSide: 0, side: "sell", size: 2 })).toBe(false);
-    expect(increasesExposure({ currentNet: 1, pendingSameSide: 0, side: "sell", size: 3 })).toBe(true);
+  it("treats only an exit no larger than the position as reducing; reversals and unknown directions open", () => {
+    expect(increasesExposure({ currentNet: 1, pendingSameSide: 0, side: "sell", size: 1 })).toBe(false);
+    expect(increasesExposure({ currentNet: -2, pendingSameSide: 0, side: "buy", size: 1 })).toBe(false);
+    expect(increasesExposure({ currentNet: 1, pendingSameSide: 0, side: "sell", size: 2 })).toBe(true);
+    expect(increasesExposure({ currentNet: 1, pendingSameSide: 0, side: "buy", size: 1 })).toBe(true);
+    expect(increasesExposure({ currentNet: 0, pendingSameSide: 0, side: "sell", size: 1 })).toBe(true);
+    expect(increasesExposure({ currentNet: null, currentSize: 1, pendingSameSide: 0, side: "sell", size: 1 })).toBe(true);
+  });
+
+  it("counts a reversal and an unknown direction against the position limit", () => {
+    const c = cfg({ PROJECTX_MAX_POSITION_SIZE: "2" });
+    expect(() => assertPositionLimit(c, { currentNet: 3, pendingSameSide: 0, side: "sell", size: 6 })).toThrow(/net position to -3/);
+    expect(() => assertPositionLimit(c, { currentNet: null, currentSize: 2, pendingSameSide: 0, side: "sell", size: 1 })).toThrow(/direction unknown/);
   });
 
   it("enforces the daily loss limit on realized net P&L", () => {
