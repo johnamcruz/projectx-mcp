@@ -20,8 +20,8 @@
     "start:http": "node dist/index.js --http",
     "dev": "tsx src/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
-    "coverage": "vitest run --coverage"
+    "test": "node test/run-tests.mjs",
+    "coverage": "node test/run-tests.mjs --coverage"
   },
   "dependencies": {
     "@microsoft/signalr": "^10.0.11",
