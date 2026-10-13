@@ -21,7 +21,7 @@ You trade real futures accounts for the user. Most of them are Topstep evaluatio
 
 ```
 1. get_server_config            → is trading enabled? what are the limits?
-2. list_accounts                → pick an account with canTrade=true and mcpTradingAllowed=true
+2. list_accounts                → pick an account with canTrade=true and mcpTradingAllowed=true (an error here means the login returned no accounts: stop and tell the user)
 3. journal_read {kind:"lesson"} → your standing rules. Also read the last few "review" entries.
 4. get_account_snapshot         → balance, open positions, working orders, today's P&L vs. the loss limit
 5. search_contracts "MNQ"       → take the activeContract=true id. Note tickSize and tickValue.
@@ -51,13 +51,30 @@ You trade real futures accounts for the user. Most of them are Topstep evaluatio
 | Sides | `buy` opens or adds to a long and closes a short. `sell` does the opposite. |
 | Order types | `market`; `limit` needs `limitPrice`; `stop` needs `stopPrice`; `trailing_stop` needs `trailPrice`; `join_bid` / `join_ask` rest at the best bid or ask. |
 | `trailPrice` | An **absolute price level**, not a distance. Example: a sell trailing stop 6 ticks below a last price of 70.50 on a 0.01-tick contract is `70.44`, not `0.06`. When read back from order search, `trailPrice` shows the distance. |
-| Prices | Must be multiples of `tickSize` (MNQ/MES tick size is 0.25). |
+| Prices | Must be multiples of `tickSize` (MNQ/MES tick size is 0.25, MGC 0.1). The server rounds off-grid prices onto the grid, never toward the market or to a worse fill, and reports it in `snapped` (see below). Send on-grid prices anyway: the rounding is a safety net. |
+| Empty account list | `list_accounts` returning no accounts is an error ("No accounts returned for this login …"): the account is not active at the firm, or `PROJECTX_API_URL` is not the firm's gateway. Tell the user; don't trade. An empty `search_contracts` result is just `[]`: check the symbol. |
 | Brackets | `stopLossBracket` / `takeProfitBracket` `ticks` are **distances** from the fill (at least 4 ticks); the server signs them by side, so send `10`, not `-10`. They work only when the account uses Auto OCO Brackets. |
 | Bars | `get_bars` returns bars oldest→newest. `t` is the bar's open time in UTC. Limit: 50 requests / 30 s. |
 | Fills | In `search_trades`, `profitAndLoss: null` (`halfTurn: true`) marks an opening fill. Realized P&L is on the closing fill. Fees are separate. |
 | `canTrade=false` / errorCode 4 `AccountViolation` | The account is locked by the firm. Stop trading it. |
 | errorCode 5 `OutsideTradingHours` | The market is closed. Don't retry in a loop. |
 | cancel / close errors "Live accounts not supported" | These endpoints work only on simulated or evaluation accounts. |
+
+### Tick rounding (`snapped`)
+
+`place_order` and `modify_order` round each price onto the contract's tick grid (`tickSize` from the contract, looked up once per contract):
+
+| Price | buy | sell |
+|---|---|---|
+| `stopPrice`, `trailPrice` (stop, trailing_stop) | up | down |
+| `limitPrice` | down (never pay more) | up |
+| `limitPrice` of a working stop-limit (`modify_order`) | up, like its stop | down, like its stop |
+
+So a long's protective sell stop at 20999.9 goes to 20999.75 and a short's buy stop at 21000.1 to 21000.25; a buy limit at 21000.1 goes to 21000.00. A stop-limit's limit rounds the same way as its stop, so it never moves past the trigger.
+
+- `modify_order` takes the side and type from the working order. It **never rounds `trailPrice`**: a working trailing stop may read it back as a distance, so `trailPrice` goes to the broker exactly as you send it.
+- When a price changed, the result has `snapped: { stopPrice: { from: 20999.9, to: 20999.75 } }` (one entry per changed field), and the journal records it. Recompute your $ risk from the `to` price.
+- If the tick size or the working order can't be read, the price goes unchanged and the broker decides.
 
 ### What `place_order` and `close_position` return
 
@@ -80,6 +97,28 @@ After a **market** entry with a `stopLossBracket` that opens, the server waits f
 - If the server can't read the open positions, `place_order` fails rather than guess whether the order reduces. To get out, use `close_position`, which doesn't need that check.
 - `close_position` returns `status`: `flat` (no position, no working orders on the contract), `still_open` (the position is still there or couldn't be read, including one whose direction is unknown; its orders are left in place so it keeps its stop) or `legs_left` (flat, but some orders couldn't be cancelled or checked). The last two are errors: look at `list_open_positions` and `list_open_orders` and finish the job.
 - Every order tool (`place_order`, `modify_order`, `cancel_order`, `close_position`, `partial_close_position`) answers within 10 seconds. A write whose reply was lost is never re-sent: check the orders and positions.
+
+### The protection check (reconcile)
+
+While trading is enabled, the server checks **its own trades** every `PROJECTX_RECONCILE_SECONDS` (default 30, at least 5). Its own trades are the account + contract pairs that `place_order` or `modify_order` sent an order on within the window, as recorded in the journal (`order_sent` entries, written before each order is sent, and `order_placed`). The window is since the trading day started (17:00 America/Chicago) or the last 24 hours, whichever reaches further back. A position on a pair the server hasn't traded in the window is never touched. A manual position on a pair it did trade is in scope.
+
+**A position of yours without a covering stop gets closed.** Covered means working `stop` / `trailing_stop` orders on the side opposite the position whose sizes add up to at least the whole position. A stop-limit does not count as cover. It closes a contract only when:
+
+- the position was seen uncovered on two checks at least `PROJECTX_RECONCILE_GRACE_SECONDS` apart (default 15),
+- no order was sent on that account and contract within that grace period, and
+- a fresh read right before the close still shows it open and uncovered, and the journal shows no new order on it.
+
+It then closes the position with the same flatten as `close_position`: close, cancel that contract's orders once flat, verify. Journal entries are tagged `reconcile` and `unprotected`:
+- **Success:** an `exit` entry and a logged warning.
+- **Flat with working orders left over:** a `note` ("flat; legs left: <ids>"). Those orders are cancelled again on later checks while the contract stays flat.
+- **Failed close:** a `note` ("close failed: …"). If the broker refused it, the next try is in 5 minutes. With no reply or not flat in time, it's 1, then 2, then 5 minutes.
+
+It never cancels orders while a position is open and never touches orders when you are flat.
+
+What this means for you:
+- Protect every position with a stop at the exchange right away; a bracketed entry does this.
+- Keep stops sized to the whole position after a partial fill or an add.
+- If you see a `reconcile` entry in the journal, review why the position had no stop. A "close failed" note means the position may still be open: check it.
 
 ### How to learn
 
@@ -116,7 +155,9 @@ Use `get_performance` over longer windows (week, month) to check whether a setup
 - **Commands:** `npm run build`, `npm test`, `npm run coverage` (the thresholds in `vitest.config.ts` are enforced), `npm run typecheck`.
 - **Layout:**
   - `src/client.ts`: REST client (login, token refresh, a timeout on every request, read retries with backoff, Retry-After on 429, one re-login on 401, response envelope errors). Order writes (`Order/place`, `Order/modify`, `Order/cancel`, `Position/closeContract`, `Position/partialCloseContract`) are never re-sent once they may have reached the broker; a lost `Order/place` reply is resolved by looking the order up by its `customTag`.
-  - `src/protect.ts`: bracket signing, the fill and stop check after a bracketed market entry, and the flatten (close, cancel the contract's orders, verify) used by `place_order` and `close_position`
+  - `src/protect.ts`: bracket signing, the fill and stop check after a bracketed market entry, and the flatten (close, cancel the contract's orders, verify) used by `place_order`, `close_position` and the reconcile
+  - `src/ticks.ts`: `snapToTick` (float-safe floor/ceil/round on the tick ratio with a 1e-9 epsilon, rounded to 10 decimals), the rounding direction per price field and side, and the per-contract tick size cache (`Contract/searchById`)
+  - `src/reconcile.ts`: the REST protection check on a timer (coverage rule, own-trade scope from the journal, grace period, backoff, lock file)
   - `src/server.ts`: all MCP tools, the `projectx://guide` resource, and the `trading_session` prompt
   - `src/risk.ts`: guardrails and trading-day math (pure functions)
   - `src/realtime.ts`: SignalR market hub quote cache
@@ -133,4 +174,21 @@ Use `get_performance` over longer windows (week, month) to check whether a setup
   - Never return or log `PROJECTX_API_KEY` or tokens. `publicConfig` is the only config the model sees.
   - Write tools get `destructiveHint: true`; read tools get `readOnlyHint: true`.
   - New tools need a test in `test/server.test.ts`, which uses an in-memory MCP client and a fake API (`test/helpers.ts`). Tests must not call the real API.
+  - Prices sent by `place_order` and `modify_order` go through `snapPrices`. Stops (`stopPrice`, `trailPrice`) round down for a sell and up for a buy; limits round down for a buy and up for a sell; a stop-limit's `limitPrice` rounds with its stop. `modify_order` never rounds `trailPrice`, since it may be read back as a distance. A failed tick or working-order lookup sends the price unchanged; a lookup must never block an order.
+  - `place_order` and `modify_order` write an `order_sent` journal entry (accountId, contractId, `ts` from the injected clock) **before** sending, so a lost reply still counts. The send waits for it at most `NOTE_SENT_CAP_MS` (200 ms wall time); other journal writes in order tools wait at most `RECORD_CAP_MS` (500 ms). A journal failure never blocks or fails an order. `Journal.add` writes `ts` first on each line. Protection notes in `protect.ts` use the same cap (`bounded(…, RECORD_CAP_MS)` from `journal.ts`).
+  - The reconcile (`src/reconcile.ts`) runs only when `tradingEnabled` and `PROJECTX_RECONCILE_SECONDS > 0`; values below 5 are raised to 5 with a stderr line.
+    - **Scope:** only account + contract pairs with an `order_sent` / `order_placed` entry since `min(tradingDayStart, now - 24 h)`.
+      - The journal is shared by both copies of the server (same `journalPath`).
+      - It is read with `Journal.readSince`, which reads backwards from the end in chunks. A line more than 5 min older than the window counts as old, and the read stops only once a whole chunk is old or 50 old lines come in a row. `journal_read` still reads the whole file.
+      - If the journal can't be read, the cycle does nothing and warns once.
+      - Streaks of pairs that leave the window are dropped.
+    - **Flatten conditions:** two uncovered checks `PROJECTX_RECONCILE_GRACE_SECONDS` apart; no order entry on the pair within the grace; the lock still its own; `assertTradingAllowed`; and a re-read right before the close that still shows the contract open and uncovered.
+    - **Never acts on a failed read.** Each account's reads get their own deadline.
+    - **Right before `flatten`:** it re-reads the journal tail for an order on the pair within the grace (skip if there is one, or if the read fails).
+    - **`legs_left`:** a `note` ("flat; legs left: <ids>") with no backoff. Only legs whose cancel failed during the flatten (`failedCancelOrderIds`) are remembered, never an order first seen in its final read. They are cancelled again, by the lock holder and within the allow-list, while the contract stays flat, and forgotten once gone or once a position reopens.
+    - **Failed flatten:** a `note` (not an `exit`). A definitive broker refusal (`close.success === false` with an error code) backs off 5 min; anything else steps 1, 2, then 5 min.
+    - **Lock:** `reconcile.lock` next to the journal, created exclusively, holding pid, token and heartbeat. It is stale after 3x the interval or when its pid is dead. The copy without the lock doesn't read; it only tries to take the lock each cycle.
+    - **Lifecycle:** cycles never overlap. `index.ts` stops the timer and releases the lock on SIGINT/SIGTERM and on exit.
+    - **Hands off orders:** it must not cancel orders while a position is open or sweep orders when flat.
+  - `list_accounts` and `search_contracts` return arrays on success (the caller's broker interface depends on it). No accounts is an error; an empty contract search stays `[]` with one stderr line.
   - Tools take human-readable enum names (`buy`, `limit`, `minute`) and map them to API integers in `src/enums.ts`. Responses keep the numeric fields and add names next to them.

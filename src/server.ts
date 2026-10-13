@@ -12,7 +12,7 @@ import {
   decoratePosition,
   decorateTrade,
 } from "./enums.js";
-import { JOURNAL_KINDS, Journal } from "./journal.js";
+import { JOURNAL_KINDS, Journal, RECORD_CAP_MS, bounded } from "./journal.js";
 import { summarizeTrades, type Trade } from "./performance.js";
 import { CALL_BUDGET_MS, MIN_BRACKET_TICKS, PLACE_BY_MS, positionOn, protectionFlow, signedBrackets, type Protection } from "./protect.js";
 import type { QuoteSource } from "./realtime.js";
@@ -27,6 +27,7 @@ import {
   realizedNet,
   tradingDayStart,
 } from "./risk.js";
+import { TickSizes, snapPrices, type Snapped } from "./ticks.js";
 
 export interface Deps {
   config: Config;
@@ -38,6 +39,8 @@ export interface Deps {
   sleep?: (ms: number) => Promise<void>;
   /** Warning sink; must be stderr in production (stdout is the MCP channel). */
   warn?: (line: string) => void;
+  /** Tick sizes per contract, cached for the process lifetime (one per server if absent). */
+  ticks?: TickSizes;
 }
 
 const INSTRUCTIONS = `ProjectX / TopstepX futures trading server. You are trading real (or evaluation) futures accounts on the user's behalf.
@@ -89,6 +92,22 @@ function outcome(res: ApiEnvelope, names: Record<number, string>) {
   };
 }
 
+/** `{ snapped }` when a price was moved onto the tick grid, else nothing. */
+const snappedField = (s: Snapped) => (Object.keys(s).length ? { snapped: s } : {});
+
+/** Host of a URL for messages (never the path or query). */
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return "unknown";
+  }
+}
+
+/** How long an order waits for its `order_sent` journal entry before it is sent anyway. */
+export const NOTE_SENT_CAP_MS = 200;
+
+
 const UNIT_MS: Record<keyof typeof BAR_UNITS, number> = {
   second: 1e3, minute: 6e4, hour: 36e5, day: 864e5, week: 7 * 864e5, month: 31 * 864e5,
 };
@@ -112,6 +131,16 @@ export function createServer(deps: Deps): McpServer {
   const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
   const warn = deps.warn ?? ((line: string) => console.error(`[projectx-mcp] ${line}`));
   const flow = protectionFlow({ client, journal, now, sleep });
+  const ticks = deps.ticks ?? new TickSizes(client);
+  /**
+   * An `order_sent` journal entry, written before an order write is sent. The
+   * order waits for it at most NOTE_SENT_CAP_MS (wall time), then goes anyway and
+   * the write may land late; a journal failure never blocks the order.
+   */
+  const noteSent = (acct: number, contract: string | undefined, text: string, data?: unknown, orderId?: number) =>
+    bounded(journal.add({ ts: new Date(now()).toISOString(), kind: "order_sent", text, accountId: acct, contractId: contract, orderId, data }), NOTE_SENT_CAP_MS);
+  /** A journal write from an order tool: never fails the tool, and waits at most RECORD_CAP_MS so the tool keeps its 10 s answer. */
+  const record = (entry: Parameters<Journal["add"]>[0]) => bounded(journal.add(entry), RECORD_CAP_MS);
   /** Every order tool answers within CALL_BUDGET_MS, retries and re-login included. */
   const withinBudget = (): PostOptions => ({ timeoutMs: CALL_BUDGET_MS, deadline: now() + CALL_BUDGET_MS });
   const server = new McpServer({ name: "projectx-mcp", version: "0.1.0" }, { instructions: INSTRUCTIONS });
@@ -160,6 +189,8 @@ export function createServer(deps: Deps): McpServer {
 
   /** Pre-checks (positions, orders, account, today's P&L) must finish this soon after the call starts. */
   const PRECHECK_MS = 1_500;
+  /** modify_order's lookups (the working order, then its tick size) each take at most this. */
+  const MODIFY_LOOKUP_MS = 1_500;
   /** Time left for a lookup by customTag when the entry's reply is lost. */
   const TAG_LOOKUP_MS = 800;
 
@@ -183,7 +214,8 @@ export function createServer(deps: Deps): McpServer {
 
     // Pre-checks share one short window so the order and its protection keep their time.
     const pre: PostOptions = { timeoutMs: PRECHECK_MS, deadline: t0 + PRECHECK_MS };
-    const [positions, orders, account, today] = await Promise.all([
+    const hasPrice = a.limitPrice !== undefined || a.stopPrice !== undefined || a.trailPrice !== undefined;
+    const [positions, orders, account, today, tick] = await Promise.all([
       openPositions(a.accountId, pre),
       openOrders(a.accountId, pre),
       client
@@ -196,6 +228,8 @@ export function createServer(deps: Deps): McpServer {
             (err: unknown) => ({ err }),
           )
         : null,
+      // A failed lookup sends the prices unchanged: the broker decides.
+      hasPrice ? ticks.get(a.contractId, pre) : null,
     ]);
     const before = positionOn(positions, a.contractId);
     const currentNet = before.net;
@@ -212,9 +246,7 @@ export function createServer(deps: Deps): McpServer {
       // With an unknown direction the order may be an exit, so canTrade alone does not refuse it: the broker decides.
       if (account?.canTrade === false && currentNet !== null) {
         const msg = `Blocked by risk guardrail: account ${accountName} has canTrade=false (locked by the firm); only orders that reduce a position are allowed.`;
-        await journal
-          .add({ kind: "order_blocked", text: `${msg} | rationale: ${a.rationale}`, accountId: a.accountId, contractId: a.contractId })
-          .catch(() => {});
+        await record({ kind: "order_blocked", text: `${msg} | rationale: ${a.rationale}`, accountId: a.accountId, contractId: a.contractId });
         return { ...json({ orderId: null, success: false, errorCode: 4, errorName: PLACE_ERRORS[4], errorMessage: msg }), isError: true };
       }
       try {
@@ -235,9 +267,12 @@ export function createServer(deps: Deps): McpServer {
     const customTag = a.customTag || newCustomTag();
     // A protected entry must leave time for the fill check and a flatten; the client looks the order up by tag within `placeBy`.
     const placeBy = protect ? deadline - PLACE_BY_MS : deadline;
+    const snap = snapPrices({ limitPrice: a.limitPrice, stopPrice: a.stopPrice, trailPrice: a.trailPrice }, a.side, tick);
     const request = { side: a.side, type: a.type, size: a.size, limitPrice: a.limitPrice, stopPrice: a.stopPrice, trailPrice: a.trailPrice, stopLossBracket: a.stopLossBracket, takeProfitBracket: a.takeProfitBracket };
 
     let res: ApiEnvelope & { orderId: number | null; recoveredByCustomTag?: boolean };
+    // Journaled before the send (a lost reply may still have placed it): the reconcile's scope and grace read these.
+    await noteSent(a.accountId, a.contractId, `place_order ${a.side} ${a.size} ${a.type}`, { customTag });
     try {
       res = await client.post<ApiEnvelope & { orderId: number | null }>(
         "/api/Order/place",
@@ -247,9 +282,9 @@ export function createServer(deps: Deps): McpServer {
           type: ORDER_TYPES[a.type],
           side: SIDES[a.side],
           size: a.size,
-          limitPrice: a.limitPrice ?? null,
-          stopPrice: a.stopPrice ?? null,
-          trailPrice: a.trailPrice ?? null,
+          limitPrice: snap.prices.limitPrice ?? null,
+          stopPrice: snap.prices.stopPrice ?? null,
+          trailPrice: snap.prices.trailPrice ?? null,
           customTag,
           stopLossBracket: a.stopLossBracket ? { ticks: signed.stop, type: ORDER_TYPES[a.stopLossBracket.type] } : null,
           takeProfitBracket: a.takeProfitBracket ? { ticks: signed.target, type: ORDER_TYPES[a.takeProfitBracket.type] } : null,
@@ -258,24 +293,21 @@ export function createServer(deps: Deps): McpServer {
       );
     } catch (e) {
       if (!(e instanceof OrderOutcomeUnknownError)) throw e;
-      const result = { orderId: null, customTag, outcome: "unknown", success: false, errorMessage: e.message };
-      await journal
-        .add({ kind: "order_placed", text: a.rationale, accountId: a.accountId, contractId: a.contractId, data: { request, result, positionBefore: currentNet, sizeBefore: before.size } })
-        .catch(() => {});
+      const result = { orderId: null, customTag, outcome: "unknown", success: false, errorMessage: e.message, ...snappedField(snap.snapped) };
+      await record({ kind: "order_placed", text: a.rationale, accountId: a.accountId, contractId: a.contractId, data: { request, result, positionBefore: currentNet, sizeBefore: before.size } });
       return { ...json(result), isError: true };
     }
 
     let result: Record<string, unknown> = { orderId: res.orderId, customTag, ...outcome(res, PLACE_ERRORS) };
     if (res.recoveredByCustomTag) result.recoveredByCustomTag = true;
+    Object.assign(result, snappedField(snap.snapped));
 
     const finalRefusal = res.errorCode === 4 || res.errorCode === 5;
     if (!res.success && !finalRefusal && (a.stopLossBracket || a.takeProfitBracket) && /Position Brackets/i.test(res.errorMessage ?? "")) {
       // Not in Auto OCO mode: nothing was opened, and an entry is never sent without its brackets.
       const setup = `Account ${accountName} rejects bracket orders: enable Auto OCO Brackets on the TopstepX dashboard`;
       warn(setup);
-      await journal
-        .add({ kind: "order_blocked", text: setup, accountId: a.accountId, contractId: a.contractId, tags: ["account-setup", "auto-oco"], data: { accountId: a.accountId, contractId: a.contractId, errorCode: res.errorCode, errorMessage: res.errorMessage } })
-        .catch(() => {});
+      await record({ kind: "order_blocked", text: setup, accountId: a.accountId, contractId: a.contractId, tags: ["account-setup", "auto-oco"], data: { accountId: a.accountId, contractId: a.contractId, errorCode: res.errorCode, errorMessage: res.errorMessage } });
       result.errorMessage = `${res.errorMessage} Enable Auto OCO Brackets for this account in the TopstepX dashboard; entries are not sent without brackets.`;
     }
 
@@ -296,9 +328,7 @@ export function createServer(deps: Deps): McpServer {
     // The caller reads errorMessage on an error reply; an unverified flatten must say a position may be open.
     if (protection?.status === "unknown") result.errorMessage = protection.message;
 
-    await journal
-      .add({ kind: "order_placed", text: a.rationale, accountId: a.accountId, contractId: a.contractId, orderId: res.orderId ?? undefined, data: { request, result, positionBefore: currentNet, sizeBefore: before.size } })
-      .catch(() => {});
+    await record({ kind: "order_placed", text: a.rationale, accountId: a.accountId, contractId: a.contractId, orderId: res.orderId ?? undefined, data: { request, result, positionBefore: currentNet, sizeBefore: before.size } });
     const isError = !result.success || protection?.status === "unknown";
     return isError ? { ...json(result), isError: true } : json(result);
   }
@@ -328,6 +358,12 @@ export function createServer(deps: Deps): McpServer {
     },
     handler(async ({ onlyActiveAccounts }: { onlyActiveAccounts: boolean }) => {
       const res = await client.post<ApiEnvelope & { accounts: Record<string, unknown>[] }>("/api/Account/search", { onlyActiveAccounts });
+      if (!res.accounts?.length) {
+        throw new Error(
+          `No accounts returned for this login (onlyActiveAccounts=${onlyActiveAccounts}, API ${hostOf(config.apiUrl)}). ` +
+            "Check that the account is active at the firm and that PROJECTX_API_URL is the firm's gateway.",
+        );
+      }
       return res.accounts.map((a) => ({
         ...a,
         mcpTradingAllowed: config.tradingEnabled && (!config.allowedAccountIds.length || config.allowedAccountIds.includes(a.id as number)),
@@ -384,6 +420,8 @@ export function createServer(deps: Deps): McpServer {
     },
     handler(async ({ searchText, live }: { searchText: string; live: boolean }) => {
       const res = await client.post<ApiEnvelope & { contracts: unknown[] }>("/api/Contract/search", { searchText, live });
+      // An empty search is a valid answer; the log line helps tell a typo from a wrong data feed.
+      if (!res.contracts?.length) warn(`search_contracts: no contracts for searchText ${JSON.stringify(searchText)} (live=${live})`);
       return res.contracts;
     }),
   );
@@ -565,6 +603,7 @@ export function createServer(deps: Deps): McpServer {
         `Brackets (stopLossBracket/takeProfitBracket) are distances in ticks (at least ${MIN_BRACKET_TICKS}); the server signs them by side. They need Auto OCO Brackets on the account; ` +
         "if the broker refuses them the entry is not sent. After a market entry with a stopLossBracket the server waits for the fill and confirms the stop leg; " +
         "if it cannot, it closes the position (see `protection.status` in the result). " +
+        "Off-grid prices are rounded onto the tick grid away from the market (stops: sell down, buy up; limits: buy down, sell up) and reported in `snapped`. " +
         "Server guardrails may block the order. `rationale` is required and saved to the journal so you can learn from the outcome.",
       inputSchema: {
         accountId,
@@ -590,9 +629,7 @@ export function createServer(deps: Deps): McpServer {
         return await placeOrder(a);
       } catch (e) {
         if (e instanceof RiskError) {
-          await journal
-            .add({ kind: "order_blocked", text: `${e.message} | rationale: ${a.rationale}`, accountId: a.accountId, contractId: a.contractId })
-            .catch(() => {});
+          await record({ kind: "order_blocked", text: `${e.message} | rationale: ${a.rationale}`, accountId: a.accountId, contractId: a.contractId });
         }
         return failure(describeError(e));
       }
@@ -604,7 +641,8 @@ export function createServer(deps: Deps): McpServer {
     {
       title: "Modify order",
       description:
-        "Change size or price of a working order (e.g. move a stop to breakeven). trailPrice is an absolute price level; unlike place_order there is no max-distance check, so double-check it.",
+        "Change size or price of a working order (e.g. move a stop to breakeven). trailPrice is an absolute price level; unlike place_order there is no max-distance check, so double-check it. " +
+        "Off-grid limitPrice/stopPrice are rounded onto the tick grid by the working order's side, as in place_order (a stop-limit's limit rounds with its stop), and reported in `snapped`; trailPrice is passed through unchanged.",
       inputSchema: {
         accountId,
         orderId: z.number().int(),
@@ -619,20 +657,44 @@ export function createServer(deps: Deps): McpServer {
     handler(async (a: { accountId: number; orderId: number; size?: number; limitPrice?: number; stopPrice?: number; trailPrice?: number; reason?: string }) => {
       assertTradingAllowed(config, a.accountId);
       if (a.size !== undefined) assertOrderSize(config, a.size);
+      const budget = withinBudget();
+      const prices = { limitPrice: a.limitPrice, stopPrice: a.stopPrice, trailPrice: a.trailPrice };
+      let snap: ReturnType<typeof snapPrices> = { prices, snapped: {} };
+      // No side or contract in the input: read the working order. If it cannot be read, the prices go unchanged.
+      const lookup: PostOptions = { timeoutMs: MODIFY_LOOKUP_MS, deadline: now() + MODIFY_LOOKUP_MS };
+      const working = await openOrders(a.accountId, lookup).then((os) => os.find((o) => o.id === a.orderId) ?? null, () => null);
+      const workingContract = typeof working?.contractId === "string" ? working.contractId : undefined;
+      const side = working?.side === SIDES.buy ? "buy" : working?.side === SIDES.sell ? "sell" : null;
+      // trailPrice is never rounded here: a working trailing stop may read it back as a distance.
+      if ((a.limitPrice !== undefined || a.stopPrice !== undefined) && side && workingContract) {
+        const tick = await ticks.get(workingContract, { timeoutMs: MODIFY_LOOKUP_MS, deadline: now() + MODIFY_LOOKUP_MS });
+        snap = snapPrices(prices, side, tick, { stopLimit: working?.type === ORDER_TYPES.stop_limit, fields: ["limitPrice", "stopPrice"] });
+      }
+      await noteSent(a.accountId, workingContract, `modify_order ${a.orderId}`, undefined, a.orderId);
       const res = await client.post<ApiEnvelope>(
         "/api/Order/modify",
         {
           accountId: a.accountId,
           orderId: a.orderId,
           size: a.size ?? null,
-          limitPrice: a.limitPrice ?? null,
-          stopPrice: a.stopPrice ?? null,
-          trailPrice: a.trailPrice ?? null,
+          limitPrice: snap.prices.limitPrice ?? null,
+          stopPrice: snap.prices.stopPrice ?? null,
+          trailPrice: snap.prices.trailPrice ?? null,
         },
-        { allowFailure: true, ...withinBudget() },
+        { allowFailure: true, ...budget },
       );
-      if (a.reason) await journal.add({ kind: "note", text: `modify order ${a.orderId}: ${a.reason}`, accountId: a.accountId, orderId: a.orderId });
-      return outcome(res, ORDER_EDIT_ERRORS);
+      const snappedNote = Object.keys(snap.snapped).length ? ` (snapped to tick: ${JSON.stringify(snap.snapped)})` : "";
+      if (a.reason || snappedNote) {
+        // A journal failure never turns a done modify into an error.
+        await record({
+            kind: "note",
+            text: `modify order ${a.orderId}: ${a.reason ?? "price change"}${snappedNote}`,
+            accountId: a.accountId,
+            orderId: a.orderId,
+            ...(snappedNote ? { tags: ["tick-snap"], data: { snapped: snap.snapped } } : {}),
+          });
+      }
+      return { ...outcome(res, ORDER_EDIT_ERRORS), ...snappedField(snap.snapped) };
     }),
   );
 
@@ -674,7 +736,7 @@ export function createServer(deps: Deps): McpServer {
           cancelledOrderIds: fl.cancelledOrderIds,
           remainingOrderIds: fl.remainingOrderIds,
         };
-        await journal.add({ kind: "exit", text: a.reason ?? "close_position", accountId: a.accountId, contractId: a.contractId, data: result }).catch(() => {});
+        await record({ kind: "exit", text: a.reason ?? "close_position", accountId: a.accountId, contractId: a.contractId, data: result });
         return fl.status === "flat" ? json(result) : { ...json(result), isError: true };
       } catch (e) {
         return failure(describeError(e));
@@ -697,7 +759,7 @@ export function createServer(deps: Deps): McpServer {
         { accountId: a.accountId, contractId: a.contractId, size: a.size },
         { allowFailure: true, ...withinBudget() },
       );
-      await journal.add({ kind: "exit", text: a.reason ?? `partial close ${a.size}`, accountId: a.accountId, contractId: a.contractId, data: outcome(res, CLOSE_ERRORS) });
+      await record({ kind: "exit", text: a.reason ?? `partial close ${a.size}`, accountId: a.accountId, contractId: a.contractId, data: outcome(res, CLOSE_ERRORS) });
       return outcome(res, CLOSE_ERRORS);
     }),
   );

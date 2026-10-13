@@ -6,7 +6,9 @@ import { loadConfig } from "./config.js";
 import { createHttpApp } from "./http.js";
 import { Journal } from "./journal.js";
 import { MarketHub } from "./realtime.js";
+import { Reconciler } from "./reconcile.js";
 import { createServer, type Deps } from "./server.js";
+import { TickSizes } from "./ticks.js";
 import { startNgrokTunnel, type Tunnel } from "./tunnel.js";
 
 // stdout carries the MCP protocol in stdio mode, so all diagnostics go to stderr.
@@ -20,6 +22,8 @@ function buildDeps(): Deps {
     client,
     journal: new Journal(config.journalPath),
     marketHub: new MarketHub(config.marketHubUrl, () => client.getToken()),
+    ticks: new TickSizes(client),
+    warn: (line) => log(line),
   };
 }
 
@@ -44,11 +48,20 @@ async function main() {
     await createServer(deps).connect(new StdioServerTransport());
   }
 
+  // REST protection check: only with trading enabled and PROJECTX_RECONCILE_SECONDS > 0.
+  const reconciler = new Reconciler({ config: deps.config, client: deps.client, journal: deps.journal, warn: deps.warn });
+  if (reconciler.start()) {
+    log(`reconcile every ${reconciler.intervalSeconds} s (grace ${deps.config.reconcileGraceSeconds} s, lock ${reconciler.lock.path})`);
+  }
+
   const shutdown = async () => {
+    await reconciler.stop().catch(() => {});
     await tunnel?.close().catch(() => {});
     await deps.marketHub.close().catch(() => {});
     process.exit(0);
   };
+  // The release is synchronous, so it also runs when the process ends without a signal (stdin closed).
+  process.on("exit", () => reconciler.lock.release());
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
 }

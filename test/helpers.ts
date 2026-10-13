@@ -44,7 +44,7 @@ export const defaultRoutes = (): Record<string, Route> => ({
   "/api/Order/place": () => ({ ...OK, orderId: 42 }),
 });
 
-export async function setup(opts: { env?: Record<string, string>; routes?: Record<string, Route>; quote?: QuoteSource; clock?: ReturnType<typeof fakeClock> } = {}) {
+export async function setup(opts: { env?: Record<string, string>; routes?: Record<string, Route>; quote?: QuoteSource; clock?: ReturnType<typeof fakeClock>; deps?: Partial<Deps> } = {}) {
   const config = loadConfig({
     PROJECTX_USERNAME: "trader",
     PROJECTX_API_KEY: "secret-key",
@@ -57,7 +57,7 @@ export async function setup(opts: { env?: Record<string, string>; routes?: Recor
   const marketHub: QuoteSource = opts.quote ?? { getQuote: async () => null, close: async () => {} };
   const clock = opts.clock ?? fakeClock();
   const warnings: string[] = [];
-  const deps: Deps = { config, client: api, journal, marketHub, now: clock.now, sleep: clock.sleep, warn: (l) => void warnings.push(l) };
+  const deps: Deps = { config, client: api, journal, marketHub, now: clock.now, sleep: clock.sleep, warn: (l) => void warnings.push(l), ...opts.deps };
   const server = createServer(deps);
   const client = new Client({ name: "test", version: "0" });
   const [a, b] = InMemoryTransport.createLinkedPair();

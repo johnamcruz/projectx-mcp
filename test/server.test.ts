@@ -924,3 +924,275 @@ describe("review round 2", () => {
     expect(api.bodiesFor("/api/Order/cancel")).toHaveLength(0);
   });
 });
+
+describe("tick rounding", () => {
+  const tickRoute = (tickSize: number) => ({ "/api/Contract/searchById": () => ({ ...OK, contract: { id: MNQ, tickSize } }) });
+
+  it.each([
+    ["stop", "sell", "stopPrice", 20999.9, 20999.75],
+    ["stop", "buy", "stopPrice", 21000.1, 21000.25],
+    ["trailing_stop", "sell", "trailPrice", 20999.9, 20999.75],
+    ["trailing_stop", "buy", "trailPrice", 21000.1, 21000.25],
+    ["limit", "buy", "limitPrice", 21000.1, 21000],
+    ["limit", "sell", "limitPrice", 21000.1, 21000.25],
+  ])("place_order rounds a %s %s %s away from the market", async (type, side, field, from, to) => {
+    const { call, api, journal } = await setup({ routes: tickRoute(0.25), env: { PROJECTX_MAX_POSITION_SIZE: "5" } });
+    const res = await call("place_order", { ...order, type, side, [field]: from });
+    expect(res.isError).toBe(false);
+    expect(api.bodiesFor("/api/Order/place")[0][field]).toBe(to);
+    expect(res.data.snapped).toEqual({ [field]: { from, to } });
+    const [entry] = await journal.read({ kind: "order_placed" });
+    expect((entry.data as any).result.snapped).toEqual({ [field]: { from, to } });
+  });
+
+  it("place_order fixes float noise and uses an MGC-style 0.1 tick", async () => {
+    const noisy = await setup({ routes: tickRoute(0.25) });
+    await noisy.call("place_order", { ...order, type: "limit", side: "sell", limitPrice: 30342.249999 });
+    expect(noisy.api.bodiesFor("/api/Order/place")[0].limitPrice).toBe(30342.25);
+    const mgc = await setup({ routes: tickRoute(0.1) });
+    const res = await mgc.call("place_order", { ...order, type: "stop", side: "sell", stopPrice: 2650.37 });
+    expect(mgc.api.bodiesFor("/api/Order/place")[0].stopPrice).toBe(2650.3);
+    expect(res.data.snapped).toEqual({ stopPrice: { from: 2650.37, to: 2650.3 } });
+  });
+
+  it("place_order leaves on-grid prices untouched and reports nothing", async () => {
+    const { call, api } = await setup({ routes: tickRoute(0.25) });
+    const res = await call("place_order", { ...order, type: "limit", limitPrice: 21000.75 });
+    expect(api.bodiesFor("/api/Order/place")[0].limitPrice).toBe(21000.75);
+    expect(res.data.snapped).toBeUndefined();
+  });
+
+  it("place_order sends the price unchanged when the tick lookup fails, and still places the order", async () => {
+    const { call, api } = await setup({ routes: { "/api/Contract/searchById": () => ({ success: false, errorCode: 8, errorMessage: "not found" }) } });
+    const res = await call("place_order", { ...order, type: "limit", limitPrice: 21000.1 });
+    expect(res.isError).toBe(false);
+    expect(api.bodiesFor("/api/Order/place")[0].limitPrice).toBe(21000.1);
+    expect(res.data.snapped).toBeUndefined();
+  });
+
+  it("place_order looks the tick size up once per contract, and not at all without a price", async () => {
+    const { call, api } = await setup({ routes: tickRoute(0.25), env: { PROJECTX_MAX_POSITION_SIZE: "5" } });
+    await call("place_order", order);
+    expect(api.bodiesFor("/api/Contract/searchById")).toHaveLength(0);
+    await call("place_order", { ...order, type: "limit", limitPrice: 21000.1 });
+    await call("place_order", { ...order, type: "limit", limitPrice: 21000.1 });
+    expect(api.bodiesFor("/api/Contract/searchById")).toEqual([{ contractId: MNQ }]);
+  });
+
+  const working = (side: number, type = 4) => ({ "/api/Order/searchOpen": () => ({ ...OK, orders: [{ id: 7, contractId: MNQ, side, type, size: 1, status: 1 }] }) });
+
+  it.each([
+    [1, "stopPrice", 20999.9, 20999.75],
+    [0, "stopPrice", 21000.1, 21000.25],
+    [0, "limitPrice", 21000.1, 21000],
+    [1, "limitPrice", 21000.1, 21000.25],
+  ])("modify_order rounds by the working order's side (%i) for %s", async (side, field, from, to) => {
+    const { call, api, journal } = await setup({ routes: { ...tickRoute(0.25), ...working(side), "/api/Order/modify": () => ({ ...OK }) } });
+    const res = await call("modify_order", { accountId: 1, orderId: 7, [field]: from });
+    expect(api.bodiesFor("/api/Order/modify")[0][field]).toBe(to);
+    expect(res.data).toMatchObject({ success: true, snapped: { [field]: { from, to } } });
+    const [note] = await journal.read({ tag: "tick-snap" });
+    expect(note).toMatchObject({ kind: "note", orderId: 7, data: { snapped: { [field]: { from, to } } } });
+  });
+
+  it("modify_order sends the price unchanged when the working order or its tick cannot be read", async () => {
+    for (const routes of [
+      { ...tickRoute(0.25), "/api/Order/searchOpen": () => ({ success: false, errorCode: 1, errorMessage: null }) },
+      { ...tickRoute(0.25), "/api/Order/searchOpen": () => ({ ...OK, orders: [] }) },
+      { ...tickRoute(0.25), "/api/Order/searchOpen": () => ({ ...OK, orders: [{ id: 7, contractId: MNQ, type: 4, size: 1 }] }) },
+      { ...working(1), "/api/Contract/searchById": () => ({ success: false, errorCode: 8, errorMessage: null }) },
+    ]) {
+      const { call, api, journal } = await setup({ routes: { ...routes, "/api/Order/modify": () => ({ ...OK }) } });
+      const res = await call("modify_order", { accountId: 1, orderId: 7, stopPrice: 20999.9 });
+      expect(api.bodiesFor("/api/Order/modify")[0].stopPrice).toBe(20999.9);
+      expect(res.data.snapped).toBeUndefined();
+      expect(await journal.read({ tag: "tick-snap" })).toEqual([]);
+    }
+  });
+
+  it("modify_order looks up no tick size for a size-only change", async () => {
+    const { call, api } = await setup({ routes: { ...tickRoute(0.25), ...working(1), "/api/Order/modify": () => ({ ...OK }) } });
+    await call("modify_order", { accountId: 1, orderId: 7, size: 1 });
+    expect(api.bodiesFor("/api/Contract/searchById")).toHaveLength(0);
+  });
+
+  it("modify_order passes trailPrice through unchanged (it may be read back as a distance)", async () => {
+    const { call, api } = await setup({ routes: { ...tickRoute(0.25), ...working(1, 5), "/api/Order/modify": () => ({ ...OK }) } });
+    const res = await call("modify_order", { accountId: 1, orderId: 7, trailPrice: 20999.9 });
+    expect(api.bodiesFor("/api/Order/modify")[0].trailPrice).toBe(20999.9);
+    expect(res.data.snapped).toBeUndefined();
+    // Even next to a price that is rounded.
+    const both = await call("modify_order", { accountId: 1, orderId: 7, trailPrice: 20999.9, stopPrice: 20999.9 });
+    expect(api.bodiesFor("/api/Order/modify")[1]).toMatchObject({ trailPrice: 20999.9, stopPrice: 20999.75 });
+    expect(both.data.snapped).toEqual({ stopPrice: { from: 20999.9, to: 20999.75 } });
+  });
+
+  it.each([
+    [1, 20999.9, 20999.6, 20999.75, 20999.5],
+    [0, 21000.1, 21000.4, 21000.25, 21000.5],
+  ])("modify_order rounds a stop-limit's limit the same way as its stop (side %i)", async (side, stopPrice, limitPrice, stopTo, limitTo) => {
+    const { call, api } = await setup({ routes: { ...tickRoute(0.25), ...working(side, 3), "/api/Order/modify": () => ({ ...OK }) } });
+    const res = await call("modify_order", { accountId: 1, orderId: 7, stopPrice, limitPrice });
+    expect(api.bodiesFor("/api/Order/modify")[0]).toMatchObject({ stopPrice: stopTo, limitPrice: limitTo });
+    expect(res.data.snapped).toEqual({ stopPrice: { from: stopPrice, to: stopTo }, limitPrice: { from: limitPrice, to: limitTo } });
+  });
+
+  it("a journal failure never turns a done modify_order into an error", async () => {
+    const { call, journal } = await setup({ routes: { ...tickRoute(0.25), ...working(1), "/api/Order/modify": () => ({ ...OK }) } });
+    journal.add = async () => {
+      throw new Error("read-only disk");
+    };
+    const res = await call("modify_order", { accountId: 1, orderId: 7, stopPrice: 20999.9, reason: "trail up" });
+    expect(res.isError).toBe(false);
+    expect(res.data).toMatchObject({ success: true, snapped: { stopPrice: { from: 20999.9, to: 20999.75 } } });
+  });
+});
+
+describe("empty lists", () => {
+  it("list_accounts with no accounts is an error that names the flag and the API host", async () => {
+    const { call } = await setup({
+      env: { PROJECTX_API_URL: "https://gateway.example.com/some/path?x=1" },
+      routes: { "/api/Account/search": () => ({ ...OK, accounts: [] }) },
+    });
+    const res = await call("list_accounts", { onlyActiveAccounts: false });
+    expect(res.isError).toBe(true);
+    expect(res.text).toBe(
+      "No accounts returned for this login (onlyActiveAccounts=false, API gateway.example.com). Check that the account is active at the firm and that PROJECTX_API_URL is the firm's gateway.",
+    );
+    expect((await call("list_accounts")).text).toMatch(/onlyActiveAccounts=true/);
+    const odd = await setup({ env: { PROJECTX_API_URL: "not a url" }, routes: { "/api/Account/search": () => ({ ...OK, accounts: [] }) } });
+    expect((await odd.call("list_accounts")).text).toMatch(/API unknown\)/);
+  });
+
+  it("search_contracts with no results stays [] and logs one line", async () => {
+    const { call, warnings } = await setup({ routes: { "/api/Contract/search": () => ({ ...OK, contracts: [] }) } });
+    const res = await call("search_contracts", { searchText: "MNQX", live: true });
+    expect(res.isError).toBe(false);
+    expect(res.data).toEqual([]);
+    expect(warnings).toEqual(['search_contracts: no contracts for searchText "MNQX" (live=true)']);
+  });
+
+  it("search_contracts with results logs nothing", async () => {
+    const { call, warnings } = await setup({ routes: { "/api/Contract/search": () => ({ ...OK, contracts: [{ id: "A" }] }) } });
+    await call("search_contracts", { searchText: "MNQ" });
+    expect(warnings).toEqual([]);
+  });
+});
+
+describe("reconcile hooks in the server", () => {
+  it("get_server_config shows the reconcile interval and grace, off without trading", async () => {
+    expect((await (await setup()).call("get_server_config")).data).toMatchObject({ reconcileSeconds: 30, reconcileGraceSeconds: 15 });
+    const custom = await setup({ env: { PROJECTX_RECONCILE_SECONDS: "10", PROJECTX_RECONCILE_GRACE_SECONDS: "20" } });
+    expect((await custom.call("get_server_config")).data).toMatchObject({ reconcileSeconds: 10, reconcileGraceSeconds: 20 });
+    expect((await (await setup({ env: { PROJECTX_RECONCILE_SECONDS: "0" } })).call("get_server_config")).data.reconcileSeconds).toBe("off");
+    expect((await (await setup({ env: { PROJECTX_TRADING_ENABLED: "false" } })).call("get_server_config")).data.reconcileSeconds).toBe("off");
+    expect((await (await setup({ env: { PROJECTX_RECONCILE_SECONDS: "2" } })).call("get_server_config")).data.reconcileSeconds).toBe(5);
+  });
+
+  it("place_order journals order_sent before sending, even when its reply is lost", async () => {
+    const clock = fakeClock(Date.parse("2026-03-10T15:00:00Z"));
+    let journaledFirst = false;
+    const s = await setup({
+      clock,
+      routes: {
+        "/api/Order/place": (b: any) => {
+          journaledFirst = true;
+          throw new OrderOutcomeUnknownError("lost", b.customTag);
+        },
+      },
+    });
+    const add = s.journal.add.bind(s.journal);
+    s.journal.add = async (e) => {
+      if (e.kind === "order_sent") expect(journaledFirst).toBe(false);
+      return add(e);
+    };
+    await s.call("place_order", order);
+    const [e] = await s.journal.read({ kind: "order_sent" });
+    expect(e).toMatchObject({ ts: "2026-03-10T15:00:00.000Z", accountId: 1, contractId: MNQ });
+    expect(journaledFirst).toBe(true);
+  });
+
+  it("place_order still sends when the journal cannot be written, and journals nothing when a guardrail refuses it", async () => {
+    const failing = await setup();
+    failing.journal.add = async () => {
+      throw new Error("read-only disk");
+    };
+    expect((await failing.call("place_order", order)).isError).toBe(false);
+    expect(failing.api.bodiesFor("/api/Order/place")).toHaveLength(1);
+    const off = await setup({ env: { PROJECTX_TRADING_ENABLED: "false" } });
+    await off.call("place_order", order);
+    expect(await off.journal.read({ kind: "order_sent" })).toEqual([]);
+  });
+
+  it("modify_order journals order_sent with the working order's contract before sending", async () => {
+    let sentAt = -1;
+    const s = await setup({
+      routes: {
+        "/api/Order/searchOpen": () => ({ ...OK, orders: [{ id: 7, contractId: MNQ, side: 1, type: 4, size: 1 }] }),
+        "/api/Order/modify": () => {
+          sentAt = s.api.calls.length;
+          return { ...OK };
+        },
+      },
+    });
+    let journaledBefore = false;
+    const add = s.journal.add.bind(s.journal);
+    s.journal.add = async (e) => {
+      if (e.kind === "order_sent") journaledBefore = sentAt === -1;
+      return add(e);
+    };
+    await s.call("modify_order", { accountId: 1, orderId: 7, size: 1 });
+    expect(journaledBefore).toBe(true);
+    expect((await s.journal.read({ kind: "order_sent" }))[0]).toMatchObject({ accountId: 1, contractId: MNQ, orderId: 7 });
+  });
+});
+
+describe("order_sent journal cap", () => {
+  it.each([
+    ["place_order", order, "/api/Order/place"],
+    ["modify_order", { accountId: 1, orderId: 7, size: 1 }, "/api/Order/modify"],
+  ] as const)("%s still sends within the budget when the journal write hangs", async (tool, args, path) => {
+    const clock = fakeClock();
+    const s = await setup({ clock, routes: { "/api/Order/modify": () => ({ ...OK }) } });
+    s.journal.add = () => new Promise(() => {}); // never settles
+    const t0 = Date.now();
+    const res = await s.call(tool, args as Record<string, unknown>);
+    const waited = Date.now() - t0;
+    expect(res.isError).toBe(false);
+    expect(s.api.bodiesFor(path)).toHaveLength(1);
+    expect(waited).toBeGreaterThanOrEqual(190);
+    expect(waited).toBeLessThan(2_000);
+  });
+});
+
+describe("protection notes are capped", () => {
+  it("a hanging journal does not delay a flattened entry's reply", async () => {
+    const b = broker({ fill: { status: 2, size: 1, fillVolume: 1, filledPrice: 21000 }, legs: [targetLeg] });
+    const s = await setup({ routes: b.routes });
+    s.journal.add = () => new Promise(() => {});
+    const t0 = Date.now();
+    const res = await s.call("place_order", bracketed);
+    expect(res.data.protection.status).toBe("flattened_stop_unconfirmed");
+    // Two capped waits (the protection note, then order_placed) plus order_sent: well under the 5 s test timeout.
+    expect(Date.now() - t0).toBeLessThan(2_500);
+  });
+
+  it("a hanging journal does not delay a protected entry's reply", async () => {
+    const b = broker({ fill: { status: 2, size: 1, fillVolume: 1, filledPrice: 21000 }, legs: [stopLeg(), targetLeg] });
+    const s = await setup({ routes: b.routes });
+    s.journal.add = () => new Promise(() => {});
+    const t0 = Date.now();
+    expect((await s.call("place_order", bracketed)).data.protection.status).toBe("protected");
+    expect(Date.now() - t0).toBeLessThan(2_500);
+  });
+
+  it("a market entry not seen filled is cancelled and answered despite a hanging journal", async () => {
+    const b = broker({ fill: { status: 1, size: 1, fillVolume: 0 }, positionAfter: [] });
+    const s = await setup({ routes: b.routes });
+    s.journal.add = () => new Promise(() => {});
+    const t0 = Date.now();
+    expect((await s.call("place_order", bracketed)).data.protection.status).toBe("not_filled");
+    expect(Date.now() - t0).toBeLessThan(2_500);
+  });
+});
+
