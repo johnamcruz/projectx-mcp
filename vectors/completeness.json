@@ -1,0 +1,5198 @@
+{
+ "schema": "projectx-orderflow-vector/1",
+ "name": "completeness",
+ "description": "complete=false for the first partial minute, a minute touched by a silence over 10 s, a minute whose quote volume rose with no print (tradeFeedMismatch), a minute with a bad-timestamp print, and minutes around a disconnect; late and replayed prints are counted, not applied.",
+ "env": {},
+ "tickSize": 0.25,
+ "steps": [
+  {
+   "at": 1791842530000,
+   "call": {
+    "tool": "get_order_flow",
+    "args": {
+     "contractId": "CON.F.US.ENQ.Z26",
+     "minutes": 1
+    }
+   },
+   "expect": {
+    "contractId": "CON.F.US.ENQ.Z26",
+    "largePrint": 10,
+    "rows": [
+     {
+      "t": "2026-10-12T22:02:00.000Z",
+      "bv": 0,
+      "sv": 0,
+      "delta": 0,
+      "volume": 0,
+      "trades": 0,
+      "vwap": null,
+      "high": null,
+      "low": null,
+      "maxPrint": null,
+      "largeBuyVolume": 0,
+      "largeSellVolume": 0,
+      "ofiTrades": null,
+      "ofiQuote": null,
+      "bookImbalance": null,
+      "badTimestamps": 0,
+      "sidelessVolume": 0,
+      "complete": false,
+      "cumDelta": null,
+      "source": "live"
+     }
+    ],
+    "cumulativeDelta": {
+     "value": null,
+     "asOf": null,
+     "sessionStart": "2026-10-12T22:00:00.000Z",
+     "note": "Unknown: not every minute since the session start (17:00 CT) is complete in live or recorded data."
+    },
+    "coverage": {
+     "since": "2026-10-12T22:02:00.000Z",
+     "gaps": [],
+     "live": {
+      "subscribedAt": "2026-10-12T22:02:10.000Z",
+      "tradesLive": true,
+      "depthLive": true,
+      "quotesLive": true,
+      "liveSince": "2026-10-12T22:02:10.000Z",
+      "disconnects": [],
+      "errors": {},
+      "lastMessage": null,
+      "lastTrade": null,
+      "silences": [],
+      "graceMs": 2000,
+      "settleMs": 10000,
+      "skewMs": 0,
+      "decidedThrough": null,
+      "tradeFeedMismatch": 0,
+      "badTimestamps": 0,
+      "skippedItems": 0,
+      "latePrints": 0,
+      "replayedPrints": 0,
+      "sidelessVolume": 0
+     },
+     "recorded": "off (PROJECTX_FLOW_DIR not set)",
+     "note": "Data starts when this server subscribed to the contract (on the first order-flow call for it); nothing before that exists unless the flow recorder wrote it."
+    }
+   }
+  },
+  {
+   "at": 1791842532000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:12.000Z"
+   }
+  },
+  {
+   "at": 1791842532000,
+   "tick": true
+  },
+  {
+   "at": 1791842534000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:14.000Z"
+   }
+  },
+  {
+   "at": 1791842534000,
+   "tick": true
+  },
+  {
+   "at": 1791842536000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:16.000Z"
+   }
+  },
+  {
+   "at": 1791842536000,
+   "tick": true
+  },
+  {
+   "at": 1791842538000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:18.000Z"
+   }
+  },
+  {
+   "at": 1791842538000,
+   "tick": true
+  },
+  {
+   "at": 1791842540000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:20.000Z"
+   }
+  },
+  {
+   "at": 1791842540000,
+   "tick": true
+  },
+  {
+   "at": 1791842542000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:22.000Z"
+   }
+  },
+  {
+   "at": 1791842542000,
+   "tick": true
+  },
+  {
+   "at": 1791842544000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:24.000Z"
+   }
+  },
+  {
+   "at": 1791842544000,
+   "tick": true
+  },
+  {
+   "at": 1791842546000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:26.000Z"
+   }
+  },
+  {
+   "at": 1791842546000,
+   "tick": true
+  },
+  {
+   "at": 1791842548000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:28.000Z"
+   }
+  },
+  {
+   "at": 1791842548000,
+   "tick": true
+  },
+  {
+   "at": 1791842550000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:30.000Z"
+   }
+  },
+  {
+   "at": 1791842550000,
+   "tick": true
+  },
+  {
+   "at": 1791842552000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:32.000Z"
+   }
+  },
+  {
+   "at": 1791842552000,
+   "tick": true
+  },
+  {
+   "at": 1791842554000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:34.000Z"
+   }
+  },
+  {
+   "at": 1791842554000,
+   "tick": true
+  },
+  {
+   "at": 1791842556000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:36.000Z"
+   }
+  },
+  {
+   "at": 1791842556000,
+   "tick": true
+  },
+  {
+   "at": 1791842558000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:38.000Z"
+   }
+  },
+  {
+   "at": 1791842558000,
+   "tick": true
+  },
+  {
+   "at": 1791842560000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:40.000Z"
+   }
+  },
+  {
+   "at": 1791842560000,
+   "tick": true
+  },
+  {
+   "at": 1791842562000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:42.000Z"
+   }
+  },
+  {
+   "at": 1791842562000,
+   "tick": true
+  },
+  {
+   "at": 1791842564000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:44.000Z"
+   }
+  },
+  {
+   "at": 1791842564000,
+   "tick": true
+  },
+  {
+   "at": 1791842566000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:46.000Z"
+   }
+  },
+  {
+   "at": 1791842566000,
+   "tick": true
+  },
+  {
+   "at": 1791842568000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:48.000Z"
+   }
+  },
+  {
+   "at": 1791842568000,
+   "tick": true
+  },
+  {
+   "at": 1791842570000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:50.000Z"
+   }
+  },
+  {
+   "at": 1791842570000,
+   "tick": true
+  },
+  {
+   "at": 1791842572000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:52.000Z"
+   }
+  },
+  {
+   "at": 1791842572000,
+   "tick": true
+  },
+  {
+   "at": 1791842574000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:54.000Z"
+   }
+  },
+  {
+   "at": 1791842574000,
+   "tick": true
+  },
+  {
+   "at": 1791842576000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:56.000Z"
+   }
+  },
+  {
+   "at": 1791842576000,
+   "tick": true
+  },
+  {
+   "at": 1791842578000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:02:58.000Z"
+   }
+  },
+  {
+   "at": 1791842578000,
+   "tick": true
+  },
+  {
+   "at": 1791842580000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:00.000Z"
+   }
+  },
+  {
+   "at": 1791842580000,
+   "tick": true
+  },
+  {
+   "at": 1791842582000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:02.000Z"
+   }
+  },
+  {
+   "at": 1791842582000,
+   "tick": true
+  },
+  {
+   "at": 1791842584000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:04.000Z"
+   }
+  },
+  {
+   "at": 1791842584000,
+   "tick": true
+  },
+  {
+   "at": 1791842586000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:06.000Z"
+   }
+  },
+  {
+   "at": 1791842586000,
+   "tick": true
+  },
+  {
+   "at": 1791842588000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:08.000Z"
+   }
+  },
+  {
+   "at": 1791842588000,
+   "tick": true
+  },
+  {
+   "at": 1791842590000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:10.000Z"
+   }
+  },
+  {
+   "at": 1791842590000,
+   "tick": true
+  },
+  {
+   "at": 1791842592000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:12.000Z"
+   }
+  },
+  {
+   "at": 1791842592000,
+   "tick": true
+  },
+  {
+   "at": 1791842594000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:14.000Z"
+   }
+  },
+  {
+   "at": 1791842594000,
+   "tick": true
+  },
+  {
+   "at": 1791842596000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:16.000Z"
+   }
+  },
+  {
+   "at": 1791842596000,
+   "tick": true
+  },
+  {
+   "at": 1791842598000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:18.000Z"
+   }
+  },
+  {
+   "at": 1791842598000,
+   "tick": true
+  },
+  {
+   "at": 1791842600000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:20.000Z"
+   }
+  },
+  {
+   "at": 1791842600000,
+   "tick": true
+  },
+  {
+   "at": 1791842602000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:22.000Z"
+   }
+  },
+  {
+   "at": 1791842602000,
+   "tick": true
+  },
+  {
+   "at": 1791842604000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:24.000Z"
+   }
+  },
+  {
+   "at": 1791842604000,
+   "tick": true
+  },
+  {
+   "at": 1791842606000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:26.000Z"
+   }
+  },
+  {
+   "at": 1791842606000,
+   "tick": true
+  },
+  {
+   "at": 1791842608000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:28.000Z"
+   }
+  },
+  {
+   "at": 1791842608000,
+   "tick": true
+  },
+  {
+   "at": 1791842610000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:30.000Z"
+   }
+  },
+  {
+   "at": 1791842610000,
+   "tick": true
+  },
+  {
+   "at": 1791842612000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:32.000Z"
+   }
+  },
+  {
+   "at": 1791842612000,
+   "tick": true
+  },
+  {
+   "at": 1791842614000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:34.000Z"
+   }
+  },
+  {
+   "at": 1791842614000,
+   "tick": true
+  },
+  {
+   "at": 1791842616000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:36.000Z"
+   }
+  },
+  {
+   "at": 1791842616000,
+   "tick": true
+  },
+  {
+   "at": 1791842618000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:38.000Z"
+   }
+  },
+  {
+   "at": 1791842618000,
+   "tick": true
+  },
+  {
+   "at": 1791842620000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:40.000Z"
+   }
+  },
+  {
+   "at": 1791842620000,
+   "tick": true
+  },
+  {
+   "at": 1791842622000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:42.000Z"
+   }
+  },
+  {
+   "at": 1791842622000,
+   "tick": true
+  },
+  {
+   "at": 1791842624000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:44.000Z"
+   }
+  },
+  {
+   "at": 1791842624000,
+   "tick": true
+  },
+  {
+   "at": 1791842626000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:46.000Z"
+   }
+  },
+  {
+   "at": 1791842626000,
+   "tick": true
+  },
+  {
+   "at": 1791842628000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:48.000Z"
+   }
+  },
+  {
+   "at": 1791842628000,
+   "tick": true
+  },
+  {
+   "at": 1791842630000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:50.000Z"
+   }
+  },
+  {
+   "at": 1791842630000,
+   "tick": true
+  },
+  {
+   "at": 1791842632000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:52.000Z"
+   }
+  },
+  {
+   "at": 1791842632000,
+   "tick": true
+  },
+  {
+   "at": 1791842634000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:54.000Z"
+   }
+  },
+  {
+   "at": 1791842634000,
+   "tick": true
+  },
+  {
+   "at": 1791842636000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:56.000Z"
+   }
+  },
+  {
+   "at": 1791842636000,
+   "tick": true
+  },
+  {
+   "at": 1791842638000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:03:58.000Z"
+   }
+  },
+  {
+   "at": 1791842638000,
+   "tick": true
+  },
+  {
+   "at": 1791842640000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:04:00.000Z"
+   }
+  },
+  {
+   "at": 1791842640000,
+   "tick": true
+  },
+  {
+   "at": 1791842642000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:04:02.000Z"
+   }
+  },
+  {
+   "at": 1791842642000,
+   "tick": true
+  },
+  {
+   "at": 1791842644000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:04:04.000Z"
+   }
+  },
+  {
+   "at": 1791842644000,
+   "tick": true
+  },
+  {
+   "at": 1791842646000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:04:06.000Z"
+   }
+  },
+  {
+   "at": 1791842646000,
+   "tick": true
+  },
+  {
+   "at": 1791842648000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:04:08.000Z"
+   }
+  },
+  {
+   "at": 1791842648000,
+   "tick": true
+  },
+  {
+   "at": 1791842650000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:04:10.000Z"
+   }
+  },
+  {
+   "at": 1791842650000,
+   "tick": true
+  },
+  {
+   "at": 1791842652000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:04:12.000Z"
+   }
+  },
+  {
+   "at": 1791842652000,
+   "tick": true
+  },
+  {
+   "at": 1791842680000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:04:40.000Z"
+   }
+  },
+  {
+   "at": 1791842680000,
+   "tick": true
+  },
+  {
+   "at": 1791842682000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:04:42.000Z"
+   }
+  },
+  {
+   "at": 1791842682000,
+   "tick": true
+  },
+  {
+   "at": 1791842684000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:04:44.000Z"
+   }
+  },
+  {
+   "at": 1791842684000,
+   "tick": true
+  },
+  {
+   "at": 1791842686000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:04:46.000Z"
+   }
+  },
+  {
+   "at": 1791842686000,
+   "tick": true
+  },
+  {
+   "at": 1791842688000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:04:48.000Z"
+   }
+  },
+  {
+   "at": 1791842688000,
+   "tick": true
+  },
+  {
+   "at": 1791842690000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:04:50.000Z"
+   }
+  },
+  {
+   "at": 1791842690000,
+   "tick": true
+  },
+  {
+   "at": 1791842692000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:04:52.000Z"
+   }
+  },
+  {
+   "at": 1791842692000,
+   "tick": true
+  },
+  {
+   "at": 1791842694000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:04:54.000Z"
+   }
+  },
+  {
+   "at": 1791842694000,
+   "tick": true
+  },
+  {
+   "at": 1791842696000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:04:56.000Z"
+   }
+  },
+  {
+   "at": 1791842696000,
+   "tick": true
+  },
+  {
+   "at": 1791842698000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:04:58.000Z"
+   }
+  },
+  {
+   "at": 1791842698000,
+   "tick": true
+  },
+  {
+   "at": 1791842700000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:00.000Z"
+   }
+  },
+  {
+   "at": 1791842700000,
+   "tick": true
+  },
+  {
+   "at": 1791842702000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:02.000Z"
+   }
+  },
+  {
+   "at": 1791842702000,
+   "tick": true
+  },
+  {
+   "at": 1791842704000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:04.000Z"
+   }
+  },
+  {
+   "at": 1791842704000,
+   "tick": true
+  },
+  {
+   "at": 1791842706000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:06.000Z"
+   }
+  },
+  {
+   "at": 1791842706000,
+   "tick": true
+  },
+  {
+   "at": 1791842708000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:08.000Z"
+   }
+  },
+  {
+   "at": 1791842708000,
+   "tick": true
+  },
+  {
+   "at": 1791842710000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:10.000Z"
+   }
+  },
+  {
+   "at": 1791842710000,
+   "tick": true
+  },
+  {
+   "at": 1791842712000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:12.000Z"
+   }
+  },
+  {
+   "at": 1791842712000,
+   "tick": true
+  },
+  {
+   "at": 1791842714000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:14.000Z"
+   }
+  },
+  {
+   "at": 1791842714000,
+   "tick": true
+  },
+  {
+   "at": 1791842716000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:16.000Z"
+   }
+  },
+  {
+   "at": 1791842716000,
+   "tick": true
+  },
+  {
+   "at": 1791842718000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:18.000Z"
+   }
+  },
+  {
+   "at": 1791842718000,
+   "tick": true
+  },
+  {
+   "at": 1791842720000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:20.000Z"
+   }
+  },
+  {
+   "at": 1791842720000,
+   "tick": true
+  },
+  {
+   "at": 1791842722000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:22.000Z"
+   }
+  },
+  {
+   "at": 1791842722000,
+   "tick": true
+  },
+  {
+   "at": 1791842724000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:24.000Z"
+   }
+  },
+  {
+   "at": 1791842724000,
+   "tick": true
+  },
+  {
+   "at": 1791842726000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:26.000Z"
+   }
+  },
+  {
+   "at": 1791842726000,
+   "tick": true
+  },
+  {
+   "at": 1791842728000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:28.000Z"
+   }
+  },
+  {
+   "at": 1791842728000,
+   "tick": true
+  },
+  {
+   "at": 1791842730000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:30.000Z"
+   }
+  },
+  {
+   "at": 1791842730000,
+   "tick": true
+  },
+  {
+   "at": 1791842732000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:32.000Z"
+   }
+  },
+  {
+   "at": 1791842732000,
+   "tick": true
+  },
+  {
+   "at": 1791842734000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:34.000Z"
+   }
+  },
+  {
+   "at": 1791842734000,
+   "tick": true
+  },
+  {
+   "at": 1791842736000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:36.000Z"
+   }
+  },
+  {
+   "at": 1791842736000,
+   "tick": true
+  },
+  {
+   "at": 1791842738000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:38.000Z"
+   }
+  },
+  {
+   "at": 1791842738000,
+   "tick": true
+  },
+  {
+   "at": 1791842740000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:40.000Z"
+   }
+  },
+  {
+   "at": 1791842740000,
+   "tick": true
+  },
+  {
+   "at": 1791842742000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:42.000Z"
+   }
+  },
+  {
+   "at": 1791842742000,
+   "tick": true
+  },
+  {
+   "at": 1791842744000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:44.000Z"
+   }
+  },
+  {
+   "at": 1791842744000,
+   "tick": true
+  },
+  {
+   "at": 1791842746000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:46.000Z"
+   }
+  },
+  {
+   "at": 1791842746000,
+   "tick": true
+  },
+  {
+   "at": 1791842748000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:48.000Z"
+   }
+  },
+  {
+   "at": 1791842748000,
+   "tick": true
+  },
+  {
+   "at": 1791842750000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:50.000Z"
+   }
+  },
+  {
+   "at": 1791842750000,
+   "tick": true
+  },
+  {
+   "at": 1791842752000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:52.000Z"
+   }
+  },
+  {
+   "at": 1791842752000,
+   "tick": true
+  },
+  {
+   "at": 1791842754000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:54.000Z"
+   }
+  },
+  {
+   "at": 1791842754000,
+   "tick": true
+  },
+  {
+   "at": 1791842756000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:56.000Z"
+   }
+  },
+  {
+   "at": 1791842756000,
+   "tick": true
+  },
+  {
+   "at": 1791842758000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:05:58.000Z"
+   }
+  },
+  {
+   "at": 1791842758000,
+   "tick": true
+  },
+  {
+   "at": 1791842760000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1000,
+    "timestamp": "2026-10-12T22:06:00.000Z"
+   }
+  },
+  {
+   "at": 1791842760000,
+   "tick": true
+  },
+  {
+   "at": 1791842765000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:05.000Z"
+   }
+  },
+  {
+   "at": 1791842765000,
+   "tick": true
+  },
+  {
+   "at": 1791842767000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:07.000Z"
+   }
+  },
+  {
+   "at": 1791842767000,
+   "tick": true
+  },
+  {
+   "at": 1791842769000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:09.000Z"
+   }
+  },
+  {
+   "at": 1791842769000,
+   "tick": true
+  },
+  {
+   "at": 1791842771000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:11.000Z"
+   }
+  },
+  {
+   "at": 1791842771000,
+   "tick": true
+  },
+  {
+   "at": 1791842773000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:13.000Z"
+   }
+  },
+  {
+   "at": 1791842773000,
+   "tick": true
+  },
+  {
+   "at": 1791842775000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:15.000Z"
+   }
+  },
+  {
+   "at": 1791842775000,
+   "tick": true
+  },
+  {
+   "at": 1791842777000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:17.000Z"
+   }
+  },
+  {
+   "at": 1791842777000,
+   "tick": true
+  },
+  {
+   "at": 1791842779000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:19.000Z"
+   }
+  },
+  {
+   "at": 1791842779000,
+   "tick": true
+  },
+  {
+   "at": 1791842781000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:21.000Z"
+   }
+  },
+  {
+   "at": 1791842781000,
+   "tick": true
+  },
+  {
+   "at": 1791842783000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:23.000Z"
+   }
+  },
+  {
+   "at": 1791842783000,
+   "tick": true
+  },
+  {
+   "at": 1791842785000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:25.000Z"
+   }
+  },
+  {
+   "at": 1791842785000,
+   "tick": true
+  },
+  {
+   "at": 1791842787000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:27.000Z"
+   }
+  },
+  {
+   "at": 1791842787000,
+   "tick": true
+  },
+  {
+   "at": 1791842789000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:29.000Z"
+   }
+  },
+  {
+   "at": 1791842789000,
+   "tick": true
+  },
+  {
+   "at": 1791842791000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:31.000Z"
+   }
+  },
+  {
+   "at": 1791842791000,
+   "tick": true
+  },
+  {
+   "at": 1791842793000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:33.000Z"
+   }
+  },
+  {
+   "at": 1791842793000,
+   "tick": true
+  },
+  {
+   "at": 1791842795000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:35.000Z"
+   }
+  },
+  {
+   "at": 1791842795000,
+   "tick": true
+  },
+  {
+   "at": 1791842797000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:37.000Z"
+   }
+  },
+  {
+   "at": 1791842797000,
+   "tick": true
+  },
+  {
+   "at": 1791842799000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:39.000Z"
+   }
+  },
+  {
+   "at": 1791842799000,
+   "tick": true
+  },
+  {
+   "at": 1791842801000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:41.000Z"
+   }
+  },
+  {
+   "at": 1791842801000,
+   "tick": true
+  },
+  {
+   "at": 1791842803000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:43.000Z"
+   }
+  },
+  {
+   "at": 1791842803000,
+   "tick": true
+  },
+  {
+   "at": 1791842805000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:45.000Z"
+   }
+  },
+  {
+   "at": 1791842805000,
+   "tick": true
+  },
+  {
+   "at": 1791842807000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:47.000Z"
+   }
+  },
+  {
+   "at": 1791842807000,
+   "tick": true
+  },
+  {
+   "at": 1791842809000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:49.000Z"
+   }
+  },
+  {
+   "at": 1791842809000,
+   "tick": true
+  },
+  {
+   "at": 1791842811000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:51.000Z"
+   }
+  },
+  {
+   "at": 1791842811000,
+   "tick": true
+  },
+  {
+   "at": 1791842813000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:53.000Z"
+   }
+  },
+  {
+   "at": 1791842813000,
+   "tick": true
+  },
+  {
+   "at": 1791842815000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:55.000Z"
+   }
+  },
+  {
+   "at": 1791842815000,
+   "tick": true
+  },
+  {
+   "at": 1791842817000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:57.000Z"
+   }
+  },
+  {
+   "at": 1791842817000,
+   "tick": true
+  },
+  {
+   "at": 1791842819000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:06:59.000Z"
+   }
+  },
+  {
+   "at": 1791842819000,
+   "tick": true
+  },
+  {
+   "at": 1791842821000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:01.000Z"
+   }
+  },
+  {
+   "at": 1791842821000,
+   "tick": true
+  },
+  {
+   "at": 1791842823000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:03.000Z"
+   }
+  },
+  {
+   "at": 1791842823000,
+   "tick": true
+  },
+  {
+   "at": 1791842825000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:05.000Z"
+   }
+  },
+  {
+   "at": 1791842825000,
+   "tick": true
+  },
+  {
+   "at": 1791842827000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:07.000Z"
+   }
+  },
+  {
+   "at": 1791842827000,
+   "tick": true
+  },
+  {
+   "at": 1791842829000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:09.000Z"
+   }
+  },
+  {
+   "at": 1791842829000,
+   "tick": true
+  },
+  {
+   "at": 1791842831000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:11.000Z"
+   }
+  },
+  {
+   "at": 1791842831000,
+   "tick": true
+  },
+  {
+   "at": 1791842832000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:12.000Z"
+   }
+  },
+  {
+   "at": 1791842832000,
+   "tick": true
+  },
+  {
+   "at": 1791842832000,
+   "hub": "trade",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": [
+    {
+     "price": 100,
+     "volume": 1,
+     "type": 0,
+     "timestamp": "2026-10-12T22:07:12"
+    }
+   ]
+  },
+  {
+   "at": 1791842834000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:14.000Z"
+   }
+  },
+  {
+   "at": 1791842834000,
+   "tick": true
+  },
+  {
+   "at": 1791842836000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:16.000Z"
+   }
+  },
+  {
+   "at": 1791842836000,
+   "tick": true
+  },
+  {
+   "at": 1791842838000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:18.000Z"
+   }
+  },
+  {
+   "at": 1791842838000,
+   "tick": true
+  },
+  {
+   "at": 1791842840000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:20.000Z"
+   }
+  },
+  {
+   "at": 1791842840000,
+   "tick": true
+  },
+  {
+   "at": 1791842842000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:22.000Z"
+   }
+  },
+  {
+   "at": 1791842842000,
+   "tick": true
+  },
+  {
+   "at": 1791842844000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:24.000Z"
+   }
+  },
+  {
+   "at": 1791842844000,
+   "tick": true
+  },
+  {
+   "at": 1791842846000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:26.000Z"
+   }
+  },
+  {
+   "at": 1791842846000,
+   "tick": true
+  },
+  {
+   "at": 1791842848000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:28.000Z"
+   }
+  },
+  {
+   "at": 1791842848000,
+   "tick": true
+  },
+  {
+   "at": 1791842850000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:30.000Z"
+   }
+  },
+  {
+   "at": 1791842850000,
+   "tick": true
+  },
+  {
+   "at": 1791842852000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:32.000Z"
+   }
+  },
+  {
+   "at": 1791842852000,
+   "tick": true
+  },
+  {
+   "at": 1791842854000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:34.000Z"
+   }
+  },
+  {
+   "at": 1791842854000,
+   "tick": true
+  },
+  {
+   "at": 1791842856000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:36.000Z"
+   }
+  },
+  {
+   "at": 1791842856000,
+   "tick": true
+  },
+  {
+   "at": 1791842858000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:38.000Z"
+   }
+  },
+  {
+   "at": 1791842858000,
+   "tick": true
+  },
+  {
+   "at": 1791842860000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:40.000Z"
+   }
+  },
+  {
+   "at": 1791842860000,
+   "tick": true
+  },
+  {
+   "at": 1791842862000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:42.000Z"
+   }
+  },
+  {
+   "at": 1791842862000,
+   "tick": true
+  },
+  {
+   "at": 1791842864000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:44.000Z"
+   }
+  },
+  {
+   "at": 1791842864000,
+   "tick": true
+  },
+  {
+   "at": 1791842866000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:46.000Z"
+   }
+  },
+  {
+   "at": 1791842866000,
+   "tick": true
+  },
+  {
+   "at": 1791842868000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:48.000Z"
+   }
+  },
+  {
+   "at": 1791842868000,
+   "tick": true
+  },
+  {
+   "at": 1791842870000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:50.000Z"
+   }
+  },
+  {
+   "at": 1791842870000,
+   "tick": true
+  },
+  {
+   "at": 1791842872000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:52.000Z"
+   }
+  },
+  {
+   "at": 1791842872000,
+   "tick": true
+  },
+  {
+   "at": 1791842874000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:54.000Z"
+   }
+  },
+  {
+   "at": 1791842874000,
+   "tick": true
+  },
+  {
+   "at": 1791842876000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:56.000Z"
+   }
+  },
+  {
+   "at": 1791842876000,
+   "tick": true
+  },
+  {
+   "at": 1791842878000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:07:58.000Z"
+   }
+  },
+  {
+   "at": 1791842878000,
+   "tick": true
+  },
+  {
+   "at": 1791842880000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:00.000Z"
+   }
+  },
+  {
+   "at": 1791842880000,
+   "tick": true
+  },
+  {
+   "at": 1791842882000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:02.000Z"
+   }
+  },
+  {
+   "at": 1791842882000,
+   "tick": true
+  },
+  {
+   "at": 1791842884000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:04.000Z"
+   }
+  },
+  {
+   "at": 1791842884000,
+   "tick": true
+  },
+  {
+   "at": 1791842886000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:06.000Z"
+   }
+  },
+  {
+   "at": 1791842886000,
+   "tick": true
+  },
+  {
+   "at": 1791842888000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:08.000Z"
+   }
+  },
+  {
+   "at": 1791842888000,
+   "tick": true
+  },
+  {
+   "at": 1791842890000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:10.000Z"
+   }
+  },
+  {
+   "at": 1791842890000,
+   "tick": true
+  },
+  {
+   "at": 1791842892000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:12.000Z"
+   }
+  },
+  {
+   "at": 1791842892000,
+   "tick": true
+  },
+  {
+   "at": 1791842894000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:14.000Z"
+   }
+  },
+  {
+   "at": 1791842894000,
+   "tick": true
+  },
+  {
+   "at": 1791842896000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:16.000Z"
+   }
+  },
+  {
+   "at": 1791842896000,
+   "tick": true
+  },
+  {
+   "at": 1791842898000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:18.000Z"
+   }
+  },
+  {
+   "at": 1791842898000,
+   "tick": true
+  },
+  {
+   "at": 1791842900000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:20.000Z"
+   }
+  },
+  {
+   "at": 1791842900000,
+   "tick": true
+  },
+  {
+   "at": 1791842902000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:22.000Z"
+   }
+  },
+  {
+   "at": 1791842902000,
+   "tick": true
+  },
+  {
+   "at": 1791842904000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:24.000Z"
+   }
+  },
+  {
+   "at": 1791842904000,
+   "tick": true
+  },
+  {
+   "at": 1791842906000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:26.000Z"
+   }
+  },
+  {
+   "at": 1791842906000,
+   "tick": true
+  },
+  {
+   "at": 1791842908000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:28.000Z"
+   }
+  },
+  {
+   "at": 1791842908000,
+   "tick": true
+  },
+  {
+   "at": 1791842910000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:30.000Z"
+   }
+  },
+  {
+   "at": 1791842910000,
+   "tick": true
+  },
+  {
+   "at": 1791842912000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:32.000Z"
+   }
+  },
+  {
+   "at": 1791842912000,
+   "tick": true
+  },
+  {
+   "at": 1791842914000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:34.000Z"
+   }
+  },
+  {
+   "at": 1791842914000,
+   "tick": true
+  },
+  {
+   "at": 1791842916000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:36.000Z"
+   }
+  },
+  {
+   "at": 1791842916000,
+   "tick": true
+  },
+  {
+   "at": 1791842918000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:38.000Z"
+   }
+  },
+  {
+   "at": 1791842918000,
+   "tick": true
+  },
+  {
+   "at": 1791842920000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:40.000Z"
+   }
+  },
+  {
+   "at": 1791842920000,
+   "tick": true
+  },
+  {
+   "at": 1791842922000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:42.000Z"
+   }
+  },
+  {
+   "at": 1791842922000,
+   "tick": true
+  },
+  {
+   "at": 1791842924000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:44.000Z"
+   }
+  },
+  {
+   "at": 1791842924000,
+   "tick": true
+  },
+  {
+   "at": 1791842926000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:46.000Z"
+   }
+  },
+  {
+   "at": 1791842926000,
+   "tick": true
+  },
+  {
+   "at": 1791842928000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:48.000Z"
+   }
+  },
+  {
+   "at": 1791842928000,
+   "tick": true
+  },
+  {
+   "at": 1791842930000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:50.000Z"
+   }
+  },
+  {
+   "at": 1791842930000,
+   "tick": true
+  },
+  {
+   "at": 1791842932000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:52.000Z"
+   }
+  },
+  {
+   "at": 1791842932000,
+   "tick": true
+  },
+  {
+   "at": 1791842934000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:54.000Z"
+   }
+  },
+  {
+   "at": 1791842934000,
+   "tick": true
+  },
+  {
+   "at": 1791842936000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:56.000Z"
+   }
+  },
+  {
+   "at": 1791842936000,
+   "tick": true
+  },
+  {
+   "at": 1791842938000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:08:58.000Z"
+   }
+  },
+  {
+   "at": 1791842938000,
+   "tick": true
+  },
+  {
+   "at": 1791842940000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:00.000Z"
+   }
+  },
+  {
+   "at": 1791842940000,
+   "tick": true
+  },
+  {
+   "at": 1791842942000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:02.000Z"
+   }
+  },
+  {
+   "at": 1791842942000,
+   "tick": true
+  },
+  {
+   "at": 1791842944000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:04.000Z"
+   }
+  },
+  {
+   "at": 1791842944000,
+   "tick": true
+  },
+  {
+   "at": 1791842946000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:06.000Z"
+   }
+  },
+  {
+   "at": 1791842946000,
+   "tick": true
+  },
+  {
+   "at": 1791842948000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:08.000Z"
+   }
+  },
+  {
+   "at": 1791842948000,
+   "tick": true
+  },
+  {
+   "at": 1791842950000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:10.000Z"
+   }
+  },
+  {
+   "at": 1791842950000,
+   "tick": true
+  },
+  {
+   "at": 1791842952000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:12.000Z"
+   }
+  },
+  {
+   "at": 1791842952000,
+   "tick": true
+  },
+  {
+   "at": 1791842952000,
+   "hub": "trade",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": [
+    {
+     "symbolId": "F.US.ENQ",
+     "price": 100,
+     "volume": 7,
+     "type": 0,
+     "timestamp": "2026-10-12T22:08:30.000Z"
+    }
+   ]
+  },
+  {
+   "at": 1791842954000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:14.000Z"
+   }
+  },
+  {
+   "at": 1791842954000,
+   "tick": true
+  },
+  {
+   "at": 1791842956000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:16.000Z"
+   }
+  },
+  {
+   "at": 1791842956000,
+   "tick": true
+  },
+  {
+   "at": 1791842958000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:18.000Z"
+   }
+  },
+  {
+   "at": 1791842958000,
+   "tick": true
+  },
+  {
+   "at": 1791842960000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:20.000Z"
+   }
+  },
+  {
+   "at": 1791842960000,
+   "tick": true
+  },
+  {
+   "at": 1791842962000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:22.000Z"
+   }
+  },
+  {
+   "at": 1791842962000,
+   "tick": true
+  },
+  {
+   "at": 1791842964000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:24.000Z"
+   }
+  },
+  {
+   "at": 1791842964000,
+   "tick": true
+  },
+  {
+   "at": 1791842966000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:26.000Z"
+   }
+  },
+  {
+   "at": 1791842966000,
+   "tick": true
+  },
+  {
+   "at": 1791842968000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:28.000Z"
+   }
+  },
+  {
+   "at": 1791842968000,
+   "tick": true
+  },
+  {
+   "at": 1791842970000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:30.000Z"
+   }
+  },
+  {
+   "at": 1791842970000,
+   "tick": true
+  },
+  {
+   "at": 1791842972000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:32.000Z"
+   }
+  },
+  {
+   "at": 1791842972000,
+   "tick": true
+  },
+  {
+   "at": 1791842974000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:34.000Z"
+   }
+  },
+  {
+   "at": 1791842974000,
+   "tick": true
+  },
+  {
+   "at": 1791842976000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:36.000Z"
+   }
+  },
+  {
+   "at": 1791842976000,
+   "tick": true
+  },
+  {
+   "at": 1791842978000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:38.000Z"
+   }
+  },
+  {
+   "at": 1791842978000,
+   "tick": true
+  },
+  {
+   "at": 1791842980000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:40.000Z"
+   }
+  },
+  {
+   "at": 1791842980000,
+   "tick": true
+  },
+  {
+   "at": 1791842982000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:42.000Z"
+   }
+  },
+  {
+   "at": 1791842982000,
+   "tick": true
+  },
+  {
+   "at": 1791842984000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:44.000Z"
+   }
+  },
+  {
+   "at": 1791842984000,
+   "tick": true
+  },
+  {
+   "at": 1791842986000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:46.000Z"
+   }
+  },
+  {
+   "at": 1791842986000,
+   "tick": true
+  },
+  {
+   "at": 1791842988000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:48.000Z"
+   }
+  },
+  {
+   "at": 1791842988000,
+   "tick": true
+  },
+  {
+   "at": 1791842990000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:50.000Z"
+   }
+  },
+  {
+   "at": 1791842990000,
+   "tick": true
+  },
+  {
+   "at": 1791842992000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:52.000Z"
+   }
+  },
+  {
+   "at": 1791842992000,
+   "tick": true
+  },
+  {
+   "at": 1791842994000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:54.000Z"
+   }
+  },
+  {
+   "at": 1791842994000,
+   "tick": true
+  },
+  {
+   "at": 1791842996000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:56.000Z"
+   }
+  },
+  {
+   "at": 1791842996000,
+   "tick": true
+  },
+  {
+   "at": 1791842998000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:09:58.000Z"
+   }
+  },
+  {
+   "at": 1791842998000,
+   "tick": true
+  },
+  {
+   "at": 1791843000000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:10:00.000Z"
+   }
+  },
+  {
+   "at": 1791843000000,
+   "tick": true
+  },
+  {
+   "at": 1791843020000,
+   "hub": "down"
+  },
+  {
+   "at": 1791843020000,
+   "tick": true
+  },
+  {
+   "at": 1791843070000,
+   "hub": "resubscribed",
+   "kind": "trades",
+   "contractId": "CON.F.US.ENQ.Z26"
+  },
+  {
+   "at": 1791843070000,
+   "hub": "resubscribed",
+   "kind": "depth",
+   "contractId": "CON.F.US.ENQ.Z26"
+  },
+  {
+   "at": 1791843070000,
+   "hub": "resubscribed",
+   "kind": "quotes",
+   "contractId": "CON.F.US.ENQ.Z26"
+  },
+  {
+   "at": 1791843070000,
+   "hub": "trade",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": [
+    {
+     "symbolId": "F.US.ENQ",
+     "price": 100,
+     "volume": 9,
+     "type": 0,
+     "timestamp": "2026-10-12T22:10:15.000Z"
+    }
+   ]
+  },
+  {
+   "at": 1791843072000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:12.000Z"
+   }
+  },
+  {
+   "at": 1791843072000,
+   "tick": true
+  },
+  {
+   "at": 1791843074000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:14.000Z"
+   }
+  },
+  {
+   "at": 1791843074000,
+   "tick": true
+  },
+  {
+   "at": 1791843076000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:16.000Z"
+   }
+  },
+  {
+   "at": 1791843076000,
+   "tick": true
+  },
+  {
+   "at": 1791843078000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:18.000Z"
+   }
+  },
+  {
+   "at": 1791843078000,
+   "tick": true
+  },
+  {
+   "at": 1791843080000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:20.000Z"
+   }
+  },
+  {
+   "at": 1791843080000,
+   "tick": true
+  },
+  {
+   "at": 1791843082000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:22.000Z"
+   }
+  },
+  {
+   "at": 1791843082000,
+   "tick": true
+  },
+  {
+   "at": 1791843084000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:24.000Z"
+   }
+  },
+  {
+   "at": 1791843084000,
+   "tick": true
+  },
+  {
+   "at": 1791843086000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:26.000Z"
+   }
+  },
+  {
+   "at": 1791843086000,
+   "tick": true
+  },
+  {
+   "at": 1791843088000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:28.000Z"
+   }
+  },
+  {
+   "at": 1791843088000,
+   "tick": true
+  },
+  {
+   "at": 1791843090000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:30.000Z"
+   }
+  },
+  {
+   "at": 1791843090000,
+   "tick": true
+  },
+  {
+   "at": 1791843092000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:32.000Z"
+   }
+  },
+  {
+   "at": 1791843092000,
+   "tick": true
+  },
+  {
+   "at": 1791843094000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:34.000Z"
+   }
+  },
+  {
+   "at": 1791843094000,
+   "tick": true
+  },
+  {
+   "at": 1791843096000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:36.000Z"
+   }
+  },
+  {
+   "at": 1791843096000,
+   "tick": true
+  },
+  {
+   "at": 1791843098000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:38.000Z"
+   }
+  },
+  {
+   "at": 1791843098000,
+   "tick": true
+  },
+  {
+   "at": 1791843100000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:40.000Z"
+   }
+  },
+  {
+   "at": 1791843100000,
+   "tick": true
+  },
+  {
+   "at": 1791843102000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:42.000Z"
+   }
+  },
+  {
+   "at": 1791843102000,
+   "tick": true
+  },
+  {
+   "at": 1791843104000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:44.000Z"
+   }
+  },
+  {
+   "at": 1791843104000,
+   "tick": true
+  },
+  {
+   "at": 1791843106000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:46.000Z"
+   }
+  },
+  {
+   "at": 1791843106000,
+   "tick": true
+  },
+  {
+   "at": 1791843108000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:48.000Z"
+   }
+  },
+  {
+   "at": 1791843108000,
+   "tick": true
+  },
+  {
+   "at": 1791843110000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:50.000Z"
+   }
+  },
+  {
+   "at": 1791843110000,
+   "tick": true
+  },
+  {
+   "at": 1791843112000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:52.000Z"
+   }
+  },
+  {
+   "at": 1791843112000,
+   "tick": true
+  },
+  {
+   "at": 1791843114000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:54.000Z"
+   }
+  },
+  {
+   "at": 1791843114000,
+   "tick": true
+  },
+  {
+   "at": 1791843116000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:56.000Z"
+   }
+  },
+  {
+   "at": 1791843116000,
+   "tick": true
+  },
+  {
+   "at": 1791843118000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:11:58.000Z"
+   }
+  },
+  {
+   "at": 1791843118000,
+   "tick": true
+  },
+  {
+   "at": 1791843120000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:00.000Z"
+   }
+  },
+  {
+   "at": 1791843120000,
+   "tick": true
+  },
+  {
+   "at": 1791843122000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:02.000Z"
+   }
+  },
+  {
+   "at": 1791843122000,
+   "tick": true
+  },
+  {
+   "at": 1791843124000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:04.000Z"
+   }
+  },
+  {
+   "at": 1791843124000,
+   "tick": true
+  },
+  {
+   "at": 1791843126000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:06.000Z"
+   }
+  },
+  {
+   "at": 1791843126000,
+   "tick": true
+  },
+  {
+   "at": 1791843128000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:08.000Z"
+   }
+  },
+  {
+   "at": 1791843128000,
+   "tick": true
+  },
+  {
+   "at": 1791843130000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:10.000Z"
+   }
+  },
+  {
+   "at": 1791843130000,
+   "tick": true
+  },
+  {
+   "at": 1791843132000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:12.000Z"
+   }
+  },
+  {
+   "at": 1791843132000,
+   "tick": true
+  },
+  {
+   "at": 1791843134000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:14.000Z"
+   }
+  },
+  {
+   "at": 1791843134000,
+   "tick": true
+  },
+  {
+   "at": 1791843136000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:16.000Z"
+   }
+  },
+  {
+   "at": 1791843136000,
+   "tick": true
+  },
+  {
+   "at": 1791843138000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:18.000Z"
+   }
+  },
+  {
+   "at": 1791843138000,
+   "tick": true
+  },
+  {
+   "at": 1791843140000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:20.000Z"
+   }
+  },
+  {
+   "at": 1791843140000,
+   "tick": true
+  },
+  {
+   "at": 1791843142000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:22.000Z"
+   }
+  },
+  {
+   "at": 1791843142000,
+   "tick": true
+  },
+  {
+   "at": 1791843144000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:24.000Z"
+   }
+  },
+  {
+   "at": 1791843144000,
+   "tick": true
+  },
+  {
+   "at": 1791843146000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:26.000Z"
+   }
+  },
+  {
+   "at": 1791843146000,
+   "tick": true
+  },
+  {
+   "at": 1791843148000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:28.000Z"
+   }
+  },
+  {
+   "at": 1791843148000,
+   "tick": true
+  },
+  {
+   "at": 1791843150000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:30.000Z"
+   }
+  },
+  {
+   "at": 1791843150000,
+   "tick": true
+  },
+  {
+   "at": 1791843152000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:32.000Z"
+   }
+  },
+  {
+   "at": 1791843152000,
+   "tick": true
+  },
+  {
+   "at": 1791843154000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:34.000Z"
+   }
+  },
+  {
+   "at": 1791843154000,
+   "tick": true
+  },
+  {
+   "at": 1791843156000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:36.000Z"
+   }
+  },
+  {
+   "at": 1791843156000,
+   "tick": true
+  },
+  {
+   "at": 1791843158000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:38.000Z"
+   }
+  },
+  {
+   "at": 1791843158000,
+   "tick": true
+  },
+  {
+   "at": 1791843160000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:40.000Z"
+   }
+  },
+  {
+   "at": 1791843160000,
+   "tick": true
+  },
+  {
+   "at": 1791843162000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:42.000Z"
+   }
+  },
+  {
+   "at": 1791843162000,
+   "tick": true
+  },
+  {
+   "at": 1791843164000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:44.000Z"
+   }
+  },
+  {
+   "at": 1791843164000,
+   "tick": true
+  },
+  {
+   "at": 1791843166000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:46.000Z"
+   }
+  },
+  {
+   "at": 1791843166000,
+   "tick": true
+  },
+  {
+   "at": 1791843168000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:48.000Z"
+   }
+  },
+  {
+   "at": 1791843168000,
+   "tick": true
+  },
+  {
+   "at": 1791843170000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:50.000Z"
+   }
+  },
+  {
+   "at": 1791843170000,
+   "tick": true
+  },
+  {
+   "at": 1791843172000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:52.000Z"
+   }
+  },
+  {
+   "at": 1791843172000,
+   "tick": true
+  },
+  {
+   "at": 1791843174000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:54.000Z"
+   }
+  },
+  {
+   "at": 1791843174000,
+   "tick": true
+  },
+  {
+   "at": 1791843176000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:56.000Z"
+   }
+  },
+  {
+   "at": 1791843176000,
+   "tick": true
+  },
+  {
+   "at": 1791843178000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:12:58.000Z"
+   }
+  },
+  {
+   "at": 1791843178000,
+   "tick": true
+  },
+  {
+   "at": 1791843180000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:00.000Z"
+   }
+  },
+  {
+   "at": 1791843180000,
+   "tick": true
+  },
+  {
+   "at": 1791843182000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:02.000Z"
+   }
+  },
+  {
+   "at": 1791843182000,
+   "tick": true
+  },
+  {
+   "at": 1791843184000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:04.000Z"
+   }
+  },
+  {
+   "at": 1791843184000,
+   "tick": true
+  },
+  {
+   "at": 1791843186000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:06.000Z"
+   }
+  },
+  {
+   "at": 1791843186000,
+   "tick": true
+  },
+  {
+   "at": 1791843188000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:08.000Z"
+   }
+  },
+  {
+   "at": 1791843188000,
+   "tick": true
+  },
+  {
+   "at": 1791843190000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:10.000Z"
+   }
+  },
+  {
+   "at": 1791843190000,
+   "tick": true
+  },
+  {
+   "at": 1791843192000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:12.000Z"
+   }
+  },
+  {
+   "at": 1791843192000,
+   "tick": true
+  },
+  {
+   "at": 1791843194000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:14.000Z"
+   }
+  },
+  {
+   "at": 1791843194000,
+   "tick": true
+  },
+  {
+   "at": 1791843196000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:16.000Z"
+   }
+  },
+  {
+   "at": 1791843196000,
+   "tick": true
+  },
+  {
+   "at": 1791843198000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:18.000Z"
+   }
+  },
+  {
+   "at": 1791843198000,
+   "tick": true
+  },
+  {
+   "at": 1791843200000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:20.000Z"
+   }
+  },
+  {
+   "at": 1791843200000,
+   "tick": true
+  },
+  {
+   "at": 1791843202000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:22.000Z"
+   }
+  },
+  {
+   "at": 1791843202000,
+   "tick": true
+  },
+  {
+   "at": 1791843204000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:24.000Z"
+   }
+  },
+  {
+   "at": 1791843204000,
+   "tick": true
+  },
+  {
+   "at": 1791843206000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:26.000Z"
+   }
+  },
+  {
+   "at": 1791843206000,
+   "tick": true
+  },
+  {
+   "at": 1791843208000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:28.000Z"
+   }
+  },
+  {
+   "at": 1791843208000,
+   "tick": true
+  },
+  {
+   "at": 1791843210000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:30.000Z"
+   }
+  },
+  {
+   "at": 1791843210000,
+   "tick": true
+  },
+  {
+   "at": 1791843212000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:32.000Z"
+   }
+  },
+  {
+   "at": 1791843212000,
+   "tick": true
+  },
+  {
+   "at": 1791843214000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:34.000Z"
+   }
+  },
+  {
+   "at": 1791843214000,
+   "tick": true
+  },
+  {
+   "at": 1791843216000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:36.000Z"
+   }
+  },
+  {
+   "at": 1791843216000,
+   "tick": true
+  },
+  {
+   "at": 1791843218000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:38.000Z"
+   }
+  },
+  {
+   "at": 1791843218000,
+   "tick": true
+  },
+  {
+   "at": 1791843220000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:40.000Z"
+   }
+  },
+  {
+   "at": 1791843220000,
+   "tick": true
+  },
+  {
+   "at": 1791843222000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:42.000Z"
+   }
+  },
+  {
+   "at": 1791843222000,
+   "tick": true
+  },
+  {
+   "at": 1791843224000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:44.000Z"
+   }
+  },
+  {
+   "at": 1791843224000,
+   "tick": true
+  },
+  {
+   "at": 1791843226000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:46.000Z"
+   }
+  },
+  {
+   "at": 1791843226000,
+   "tick": true
+  },
+  {
+   "at": 1791843228000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:48.000Z"
+   }
+  },
+  {
+   "at": 1791843228000,
+   "tick": true
+  },
+  {
+   "at": 1791843230000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:50.000Z"
+   }
+  },
+  {
+   "at": 1791843230000,
+   "tick": true
+  },
+  {
+   "at": 1791843232000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:52.000Z"
+   }
+  },
+  {
+   "at": 1791843232000,
+   "tick": true
+  },
+  {
+   "at": 1791843234000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:54.000Z"
+   }
+  },
+  {
+   "at": 1791843234000,
+   "tick": true
+  },
+  {
+   "at": 1791843236000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:56.000Z"
+   }
+  },
+  {
+   "at": 1791843236000,
+   "tick": true
+  },
+  {
+   "at": 1791843238000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:13:58.000Z"
+   }
+  },
+  {
+   "at": 1791843238000,
+   "tick": true
+  },
+  {
+   "at": 1791843240000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:14:00.000Z"
+   }
+  },
+  {
+   "at": 1791843240000,
+   "tick": true
+  },
+  {
+   "at": 1791843242000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:14:02.000Z"
+   }
+  },
+  {
+   "at": 1791843242000,
+   "tick": true
+  },
+  {
+   "at": 1791843244000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:14:04.000Z"
+   }
+  },
+  {
+   "at": 1791843244000,
+   "tick": true
+  },
+  {
+   "at": 1791843246000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:14:06.000Z"
+   }
+  },
+  {
+   "at": 1791843246000,
+   "tick": true
+  },
+  {
+   "at": 1791843248000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:14:08.000Z"
+   }
+  },
+  {
+   "at": 1791843248000,
+   "tick": true
+  },
+  {
+   "at": 1791843250000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:14:10.000Z"
+   }
+  },
+  {
+   "at": 1791843250000,
+   "tick": true
+  },
+  {
+   "at": 1791843252000,
+   "hub": "quote",
+   "contractId": "CON.F.US.ENQ.Z26",
+   "payload": {
+    "symbol": "F.US.ENQ",
+    "lastPrice": 100,
+    "volume": 1050,
+    "timestamp": "2026-10-12T22:14:12.000Z"
+   }
+  },
+  {
+   "at": 1791843252000,
+   "tick": true
+  },
+  {
+   "at": 1791843252000,
+   "call": {
+    "tool": "get_order_flow",
+    "args": {
+     "contractId": "CON.F.US.ENQ.Z26",
+     "minutes": 13
+    }
+   },
+   "expect": {
+    "contractId": "CON.F.US.ENQ.Z26",
+    "largePrint": 10,
+    "rows": [
+     {
+      "t": "2026-10-12T22:02:00.000Z",
+      "bv": 0,
+      "sv": 0,
+      "delta": 0,
+      "volume": 0,
+      "trades": 0,
+      "vwap": null,
+      "high": null,
+      "low": null,
+      "maxPrint": null,
+      "largeBuyVolume": 0,
+      "largeSellVolume": 0,
+      "ofiTrades": null,
+      "ofiQuote": null,
+      "bookImbalance": null,
+      "badTimestamps": 0,
+      "sidelessVolume": 0,
+      "complete": false,
+      "cumDelta": null,
+      "source": "live"
+     },
+     {
+      "t": "2026-10-12T22:03:00.000Z",
+      "bv": 0,
+      "sv": 0,
+      "delta": 0,
+      "volume": 0,
+      "trades": 0,
+      "vwap": null,
+      "high": null,
+      "low": null,
+      "maxPrint": null,
+      "largeBuyVolume": 0,
+      "largeSellVolume": 0,
+      "ofiTrades": null,
+      "ofiQuote": null,
+      "bookImbalance": null,
+      "badTimestamps": 0,
+      "sidelessVolume": 0,
+      "complete": true,
+      "cumDelta": null,
+      "source": "live"
+     },
+     {
+      "t": "2026-10-12T22:04:00.000Z",
+      "bv": 0,
+      "sv": 0,
+      "delta": 0,
+      "volume": 0,
+      "trades": 0,
+      "vwap": null,
+      "high": null,
+      "low": null,
+      "maxPrint": null,
+      "largeBuyVolume": 0,
+      "largeSellVolume": 0,
+      "ofiTrades": null,
+      "ofiQuote": null,
+      "bookImbalance": null,
+      "badTimestamps": 0,
+      "sidelessVolume": 0,
+      "complete": false,
+      "cumDelta": null,
+      "source": "live"
+     },
+     {
+      "t": "2026-10-12T22:05:00.000Z",
+      "bv": 0,
+      "sv": 0,
+      "delta": 0,
+      "volume": 0,
+      "trades": 0,
+      "vwap": null,
+      "high": null,
+      "low": null,
+      "maxPrint": null,
+      "largeBuyVolume": 0,
+      "largeSellVolume": 0,
+      "ofiTrades": null,
+      "ofiQuote": null,
+      "bookImbalance": null,
+      "badTimestamps": 0,
+      "sidelessVolume": 0,
+      "complete": true,
+      "cumDelta": null,
+      "source": "live"
+     },
+     {
+      "t": "2026-10-12T22:06:00.000Z",
+      "bv": 0,
+      "sv": 0,
+      "delta": 0,
+      "volume": 0,
+      "trades": 0,
+      "vwap": null,
+      "high": null,
+      "low": null,
+      "maxPrint": null,
+      "largeBuyVolume": 0,
+      "largeSellVolume": 0,
+      "ofiTrades": null,
+      "ofiQuote": null,
+      "bookImbalance": null,
+      "badTimestamps": 0,
+      "sidelessVolume": 0,
+      "complete": false,
+      "cumDelta": null,
+      "source": "live"
+     },
+     {
+      "t": "2026-10-12T22:07:00.000Z",
+      "bv": 1,
+      "sv": 0,
+      "delta": 1,
+      "volume": 1,
+      "trades": 1,
+      "vwap": 100,
+      "high": 100,
+      "low": 100,
+      "maxPrint": 1,
+      "largeBuyVolume": 0,
+      "largeSellVolume": 0,
+      "ofiTrades": 1,
+      "ofiQuote": null,
+      "bookImbalance": null,
+      "badTimestamps": 1,
+      "sidelessVolume": 0,
+      "complete": false,
+      "cumDelta": null,
+      "source": "live"
+     },
+     {
+      "t": "2026-10-12T22:08:00.000Z",
+      "bv": 0,
+      "sv": 0,
+      "delta": 0,
+      "volume": 0,
+      "trades": 0,
+      "vwap": null,
+      "high": null,
+      "low": null,
+      "maxPrint": null,
+      "largeBuyVolume": 0,
+      "largeSellVolume": 0,
+      "ofiTrades": null,
+      "ofiQuote": null,
+      "bookImbalance": null,
+      "badTimestamps": 0,
+      "sidelessVolume": 0,
+      "complete": true,
+      "cumDelta": null,
+      "source": "live"
+     },
+     {
+      "t": "2026-10-12T22:09:00.000Z",
+      "bv": 0,
+      "sv": 0,
+      "delta": 0,
+      "volume": 0,
+      "trades": 0,
+      "vwap": null,
+      "high": null,
+      "low": null,
+      "maxPrint": null,
+      "largeBuyVolume": 0,
+      "largeSellVolume": 0,
+      "ofiTrades": null,
+      "ofiQuote": null,
+      "bookImbalance": null,
+      "badTimestamps": 0,
+      "sidelessVolume": 0,
+      "complete": false,
+      "cumDelta": null,
+      "source": "live"
+     },
+     {
+      "t": "2026-10-12T22:10:00.000Z",
+      "bv": 0,
+      "sv": 0,
+      "delta": 0,
+      "volume": 0,
+      "trades": 0,
+      "vwap": null,
+      "high": null,
+      "low": null,
+      "maxPrint": null,
+      "largeBuyVolume": 0,
+      "largeSellVolume": 0,
+      "ofiTrades": null,
+      "ofiQuote": null,
+      "bookImbalance": null,
+      "badTimestamps": 0,
+      "sidelessVolume": 0,
+      "complete": false,
+      "cumDelta": null,
+      "source": "live"
+     },
+     {
+      "t": "2026-10-12T22:11:00.000Z",
+      "bv": 0,
+      "sv": 0,
+      "delta": 0,
+      "volume": 0,
+      "trades": 0,
+      "vwap": null,
+      "high": null,
+      "low": null,
+      "maxPrint": null,
+      "largeBuyVolume": 0,
+      "largeSellVolume": 0,
+      "ofiTrades": null,
+      "ofiQuote": null,
+      "bookImbalance": null,
+      "badTimestamps": 0,
+      "sidelessVolume": 0,
+      "complete": false,
+      "cumDelta": null,
+      "source": "live"
+     },
+     {
+      "t": "2026-10-12T22:12:00.000Z",
+      "bv": 0,
+      "sv": 0,
+      "delta": 0,
+      "volume": 0,
+      "trades": 0,
+      "vwap": null,
+      "high": null,
+      "low": null,
+      "maxPrint": null,
+      "largeBuyVolume": 0,
+      "largeSellVolume": 0,
+      "ofiTrades": null,
+      "ofiQuote": null,
+      "bookImbalance": null,
+      "badTimestamps": 0,
+      "sidelessVolume": 0,
+      "complete": true,
+      "cumDelta": null,
+      "source": "live"
+     },
+     {
+      "t": "2026-10-12T22:13:00.000Z",
+      "bv": 0,
+      "sv": 0,
+      "delta": 0,
+      "volume": 0,
+      "trades": 0,
+      "vwap": null,
+      "high": null,
+      "low": null,
+      "maxPrint": null,
+      "largeBuyVolume": 0,
+      "largeSellVolume": 0,
+      "ofiTrades": null,
+      "ofiQuote": null,
+      "bookImbalance": null,
+      "badTimestamps": 0,
+      "sidelessVolume": 0,
+      "complete": false,
+      "cumDelta": null,
+      "source": "live"
+     },
+     {
+      "t": "2026-10-12T22:14:00.000Z",
+      "bv": 0,
+      "sv": 0,
+      "delta": 0,
+      "volume": 0,
+      "trades": 0,
+      "vwap": null,
+      "high": null,
+      "low": null,
+      "maxPrint": null,
+      "largeBuyVolume": 0,
+      "largeSellVolume": 0,
+      "ofiTrades": null,
+      "ofiQuote": null,
+      "bookImbalance": null,
+      "badTimestamps": 0,
+      "sidelessVolume": 0,
+      "complete": false,
+      "cumDelta": null,
+      "source": "live"
+     }
+    ],
+    "cumulativeDelta": {
+     "value": null,
+     "asOf": "2026-10-12T22:12:00.000Z",
+     "sessionStart": "2026-10-12T22:00:00.000Z",
+     "note": "Unknown: not every minute since the session start (17:00 CT) is complete in live or recorded data."
+    },
+    "coverage": {
+     "since": "2026-10-12T22:02:00.000Z",
+     "gaps": [
+      {
+       "from": "2026-10-12T22:02:00.000Z",
+       "to": "2026-10-12T22:03:00.000Z",
+       "minutes": 1
+      },
+      {
+       "from": "2026-10-12T22:04:00.000Z",
+       "to": "2026-10-12T22:05:00.000Z",
+       "minutes": 1
+      },
+      {
+       "from": "2026-10-12T22:06:00.000Z",
+       "to": "2026-10-12T22:08:00.000Z",
+       "minutes": 2
+      },
+      {
+       "from": "2026-10-12T22:09:00.000Z",
+       "to": "2026-10-12T22:12:00.000Z",
+       "minutes": 3
+      }
+     ],
+     "live": {
+      "subscribedAt": "2026-10-12T22:02:10.000Z",
+      "tradesLive": true,
+      "depthLive": true,
+      "quotesLive": true,
+      "liveSince": "2026-10-12T22:11:12.000Z",
+      "disconnects": [
+       "2026-10-12T22:04:40.000Z",
+       "2026-10-12T22:10:00.000Z",
+       "2026-10-12T22:11:12.000Z"
+      ],
+      "errors": {},
+      "lastMessage": "2026-10-12T22:14:12.000Z",
+      "lastTrade": "2026-10-12T22:11:10.000Z",
+      "silences": [
+       {
+        "from": "2026-10-12T22:04:12.000Z",
+        "to": "2026-10-12T22:04:40.000Z"
+       },
+       {
+        "from": "2026-10-12T22:10:00.000Z",
+        "to": "2026-10-12T22:11:10.000Z"
+       }
+      ],
+      "graceMs": 12000,
+      "settleMs": 20000,
+      "skewMs": 42000,
+      "decidedThrough": "2026-10-12T22:12:00.000Z",
+      "tradeFeedMismatch": 1,
+      "badTimestamps": 1,
+      "skippedItems": 0,
+      "latePrints": 1,
+      "replayedPrints": 1,
+      "sidelessVolume": 0
+     },
+     "recorded": "off (PROJECTX_FLOW_DIR not set)",
+     "note": "Data starts when this server subscribed to the contract (on the first order-flow call for it); nothing before that exists unless the flow recorder wrote it."
+    }
+   }
+  }
+ ]
+}

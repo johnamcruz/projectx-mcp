@@ -218,7 +218,7 @@ __marimo__/
 .streamlit/secrets.toml
 
 # Node
-node_modules/
+node_modules
 *.tsbuildinfo
 
 # Local trading journal (may contain account details)
