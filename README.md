@@ -14,7 +14,7 @@ The model connects through the [ProjectX Gateway API](https://gateway.docs.proje
 | Session | `get_server_config`: is trading enabled, and what are the guardrails |
 | Accounts | `list_accounts`, `get_account_snapshot` (balance, positions, working orders, today's P&L vs. the loss limit) |
 | Market data | `search_contracts`, `get_contract`, `list_available_contracts`, `get_bars` (historical OHLCV), `get_quote` (real-time over SignalR) |
-| Trading | `place_order` (market, limit, stop, trailing stop, join bid/ask, with optional brackets), `modify_order`, `cancel_order`, `close_position`, `partial_close_position` |
+| Trading | `place_order` (market, limit, stop, trailing stop, join bid/ask, with optional brackets given as tick distances; after a bracketed market entry the server confirms the stop leg or closes the position), `modify_order`, `cancel_order`, `close_position` (also cancels the contract's working orders and verifies flat), `partial_close_position` |
 | History | `list_open_orders`, `search_orders`, `list_open_positions`, `search_trades` |
 | Learning | `get_performance` (win rate, expectancy, profit factor, by contract), `journal_add`, `journal_read` |
 
@@ -41,8 +41,8 @@ These are enforced in the server, before any request reaches TopstepX:
 | `PROJECTX_ALLOWED_ACCOUNT_IDS` | any | Only these accounts can be traded. |
 | `PROJECTX_ALLOWED_SYMBOLS` | any | Contract roots as they appear in contract IDs, e.g. `MNQ,MES` (`CON.F.US.MNQ.Z25` → `MNQ`; note that E-mini NQ is `ENQ` and ES is `EP`). |
 | `PROJECTX_MAX_ORDER_SIZE` | `1` | Maximum contracts per order. |
-| `PROJECTX_MAX_POSITION_SIZE` | `2` | Maximum absolute net position per contract, counting resting same-side limit orders. Orders that reduce the position are always allowed. |
-| `PROJECTX_MAX_DAILY_LOSS` | `500` | Once realized P&L after fees for the trading day (from 17:00 CT) reaches −this amount, only orders that reduce the position are allowed. `0` turns it off. Set it below your Topstep daily loss limit. |
+| `PROJECTX_MAX_POSITION_SIZE` | `2` | Maximum absolute net position per contract, counting resting same-side limit orders. Orders that reduce the position are always allowed, except when the position's direction can't be read: then an order can't be told apart from an add, so it is checked like one, and you exit with `close_position`. |
+| `PROJECTX_MAX_DAILY_LOSS` | `500` | Once realized P&L after fees for the trading day (from 17:00 CT) reaches −this amount, only orders that reduce the position are allowed (with the same exception for a position whose direction can't be read). `0` turns it off. Set it below your Topstep daily loss limit. |
 
 Blocked orders are journaled as `order_blocked` so the model can review them.
 
@@ -173,7 +173,7 @@ Every module in `src/` has unit tests in `test/`, except `index.ts`, which only 
 ## References
 
 - ProjectX Gateway API docs: https://gateway.docs.projectx.com/docs/intro
-- Rate limits: 50 requests / 30 s for `retrieveBars`, 200 requests / 60 s for everything else. The client backs off once on HTTP 429.
+- Rate limits: 50 requests / 30 s for `retrieveBars`, 200 requests / 60 s for everything else. Every request has a timeout. The client retries reads on timeouts, network errors and 5xx (1, 2, 4 s), waits for `Retry-After` on HTTP 429, and never re-sends an order write that may have reached the broker.
 - Model Context Protocol: https://modelcontextprotocol.io
 
 ## License

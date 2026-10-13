@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { ProjectXError, type ApiEnvelope } from "../src/client.js";
+import { ProjectXError, type ApiEnvelope, type PostOptions } from "../src/client.js";
 import { loadConfig } from "../src/config.js";
 import { Journal } from "../src/journal.js";
 import type { QuoteSource } from "../src/realtime.js";
@@ -11,19 +11,25 @@ import { createServer, type Deps } from "../src/server.js";
 
 export const OK = { success: true, errorCode: 0, errorMessage: null };
 
-type Route = (body: any) => ApiEnvelope | Record<string, unknown>;
+type Route = (body: any, opts: PostOptions) => ApiEnvelope | Record<string, unknown>;
+
+/** Fake clock: sleep() advances it instantly, so polling tests run fast and time is exact. */
+export function fakeClock(start = Date.now()) {
+  const clock = { t: start, now: () => clock.t, sleep: async (ms: number) => void (clock.t += ms) };
+  return clock;
+}
 
 /** Fake ProjectX API: routes by path, records every call, mirrors client.post's success=false handling. */
 export function fakeApi(routes: Record<string, Route>) {
-  const calls: Array<{ path: string; body: any }> = [];
+  const calls: Array<{ path: string; body: any; opts: PostOptions }> = [];
   return {
     calls,
     bodiesFor: (path: string) => calls.filter((c) => c.path === path).map((c) => c.body),
-    async post(path: string, body: unknown, opts: { allowFailure?: boolean } = {}) {
-      calls.push({ path, body });
+    async post(path: string, body: unknown, opts: PostOptions = {}) {
+      calls.push({ path, body, opts });
       const route = routes[path];
       if (!route) throw new Error(`no fake route for ${path}`);
-      const res = route(body) as ApiEnvelope;
+      const res = route(body, opts) as ApiEnvelope;
       if (!res.success && !opts.allowFailure) throw new ProjectXError(`${path} failed: errorCode ${res.errorCode}`, path, res.errorCode);
       return res as any;
     },
@@ -38,7 +44,7 @@ export const defaultRoutes = (): Record<string, Route> => ({
   "/api/Order/place": () => ({ ...OK, orderId: 42 }),
 });
 
-export async function setup(opts: { env?: Record<string, string>; routes?: Record<string, Route>; quote?: QuoteSource } = {}) {
+export async function setup(opts: { env?: Record<string, string>; routes?: Record<string, Route>; quote?: QuoteSource; clock?: ReturnType<typeof fakeClock> } = {}) {
   const config = loadConfig({
     PROJECTX_USERNAME: "trader",
     PROJECTX_API_KEY: "secret-key",
@@ -49,7 +55,9 @@ export async function setup(opts: { env?: Record<string, string>; routes?: Recor
   const api = fakeApi({ ...defaultRoutes(), ...opts.routes });
   const journal = new Journal(config.journalPath);
   const marketHub: QuoteSource = opts.quote ?? { getQuote: async () => null, close: async () => {} };
-  const deps: Deps = { config, client: api, journal, marketHub };
+  const clock = opts.clock ?? fakeClock();
+  const warnings: string[] = [];
+  const deps: Deps = { config, client: api, journal, marketHub, now: clock.now, sleep: clock.sleep, warn: (l) => void warnings.push(l) };
   const server = createServer(deps);
   const client = new Client({ name: "test", version: "0" });
   const [a, b] = InMemoryTransport.createLinkedPair();
@@ -64,5 +72,5 @@ export async function setup(opts: { env?: Record<string, string>; routes?: Recor
     } catch {}
     return { isError: !!res.isError, text, data };
   };
-  return { api, journal, client, call, config };
+  return { api, journal, client, call, config, clock, warnings };
 }

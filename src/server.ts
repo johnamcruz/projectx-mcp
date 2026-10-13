@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { ProjectXError, type ApiEnvelope, type ProjectXClient } from "./client.js";
+import { OrderOutcomeUnknownError, ProjectXError, newCustomTag, type ApiEnvelope, type PostOptions, type ProjectXClient } from "./client.js";
 import { publicConfig, type Config } from "./config.js";
 import {
   BAR_UNITS,
@@ -14,6 +14,7 @@ import {
 } from "./enums.js";
 import { JOURNAL_KINDS, Journal } from "./journal.js";
 import { summarizeTrades, type Trade } from "./performance.js";
+import { CALL_BUDGET_MS, MIN_BRACKET_TICKS, PLACE_BY_MS, positionOn, protectionFlow, signedBrackets, type Protection } from "./protect.js";
 import type { QuoteSource } from "./realtime.js";
 import {
   RiskError,
@@ -32,6 +33,11 @@ export interface Deps {
   client: Pick<ProjectXClient, "post">;
   journal: Journal;
   marketHub: QuoteSource;
+  /** Clock and sleep for the order-protection flow (injectable for tests). */
+  now?: () => number;
+  sleep?: (ms: number) => Promise<void>;
+  /** Warning sink; must be stderr in production (stdout is the MCP channel). */
+  warn?: (line: string) => void;
 }
 
 const INSTRUCTIONS = `ProjectX / TopstepX futures trading server. You are trading real (or evaluation) futures accounts on the user's behalf.
@@ -92,39 +98,209 @@ const contractId = z.string().min(1).describe('Contract ID, e.g. "CON.F.US.MNQ.Z
 const isoTime = z.string().datetime({ offset: true });
 const bracket = z
   .object({
-    ticks: z.number().int().describe("Distance from the entry fill, in ticks."),
+    ticks: z
+      .number()
+      .int()
+      .describe(`Distance from the entry fill, in ticks (at least ${MIN_BRACKET_TICKS}). The server signs it by side; the sign you send is ignored.`),
     type: z.enum(PLACEABLE_ORDER_TYPES).describe("Order type of the bracket leg, usually stop (for SL) or limit (for TP)."),
   })
   .optional();
 
 export function createServer(deps: Deps): McpServer {
   const { config, client, journal, marketHub } = deps;
+  const now = deps.now ?? Date.now;
+  const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const warn = deps.warn ?? ((line: string) => console.error(`[projectx-mcp] ${line}`));
+  const flow = protectionFlow({ client, journal, now, sleep });
+  /** Every order tool answers within CALL_BUDGET_MS, retries and re-login included. */
+  const withinBudget = (): PostOptions => ({ timeoutMs: CALL_BUDGET_MS, deadline: now() + CALL_BUDGET_MS });
   const server = new McpServer({ name: "projectx-mcp", version: "0.1.0" }, { instructions: INSTRUCTIONS });
 
   const read = { readOnlyHint: true, openWorldHint: true } as const;
   const write = { readOnlyHint: false, destructiveHint: true, openWorldHint: true } as const;
 
-  async function openPositions(acct: number) {
+  async function openPositions(acct: number, opts?: PostOptions) {
     const res = await client.post<ApiEnvelope & { positions: Record<string, unknown>[] }>("/api/Position/searchOpen", {
       accountId: acct,
-    });
+    }, opts);
     return res.positions.map(decoratePosition);
   }
 
-  async function openOrders(acct: number) {
+  async function openOrders(acct: number, opts?: PostOptions) {
     const res = await client.post<ApiEnvelope & { orders: Record<string, unknown>[] }>("/api/Order/searchOpen", {
       accountId: acct,
-    });
+    }, opts);
     return res.orders.map(decorateOrder);
   }
 
-  async function trades(acct: number, start: string, end?: string): Promise<Trade[]> {
+  async function trades(acct: number, start: string, end?: string, opts?: PostOptions): Promise<Trade[]> {
     const res = await client.post<ApiEnvelope & { trades: Trade[] }>("/api/Trade/search", {
       accountId: acct,
       startTimestamp: start,
       endTimestamp: end ?? null,
-    });
+    }, opts);
     return res.trades;
+  }
+
+  type OrderType = (typeof PLACEABLE_ORDER_TYPES)[number];
+  interface PlaceArgs {
+    accountId: number;
+    contractId: string;
+    side: "buy" | "sell";
+    type: OrderType;
+    size: number;
+    limitPrice?: number;
+    stopPrice?: number;
+    trailPrice?: number;
+    stopLossBracket?: { ticks: number; type: OrderType };
+    takeProfitBracket?: { ticks: number; type: OrderType };
+    customTag?: string;
+    rationale: string;
+  }
+
+  /** Pre-checks (positions, orders, account, today's P&L) must finish this soon after the call starts. */
+  const PRECHECK_MS = 1_500;
+  /** Time left for a lookup by customTag when the entry's reply is lost. */
+  const TAG_LOOKUP_MS = 800;
+
+  /** place_order: guardrails, the order, and (for bracketed market entries) protection. Answers within CALL_BUDGET_MS. */
+  async function placeOrder(a: PlaceArgs) {
+    const t0 = now();
+    const deadline = t0 + CALL_BUDGET_MS;
+    if (a.type === "limit" && a.limitPrice === undefined) throw new RiskError("limit orders require limitPrice.");
+    if (a.type === "stop" && a.stopPrice === undefined) throw new RiskError("stop orders require stopPrice.");
+    if (a.type === "trailing_stop" && a.trailPrice === undefined) throw new RiskError("trailing_stop orders require trailPrice.");
+    for (const [label, b] of [["stopLossBracket", a.stopLossBracket], ["takeProfitBracket", a.takeProfitBracket]] as const) {
+      if (!b) continue;
+      const n = Math.abs(b.ticks);
+      if (!Number.isInteger(n)) throw new RiskError(`${label}.ticks must be a whole number of ticks.`);
+      if (n < MIN_BRACKET_TICKS) throw new RiskError(`${label} is ${n} ticks; the minimum bracket distance is ${MIN_BRACKET_TICKS} ticks.`);
+    }
+
+    assertTradingAllowed(config, a.accountId);
+    assertSymbolAllowed(config, a.contractId);
+    assertOrderSize(config, a.size);
+
+    // Pre-checks share one short window so the order and its protection keep their time.
+    const pre: PostOptions = { timeoutMs: PRECHECK_MS, deadline: t0 + PRECHECK_MS };
+    const [positions, orders, account, today] = await Promise.all([
+      openPositions(a.accountId, pre),
+      openOrders(a.accountId, pre),
+      client
+        .post<ApiEnvelope & { accounts: Record<string, unknown>[] }>("/api/Account/search", { onlyActiveAccounts: false }, pre)
+        .then((r) => r.accounts.find((x) => x.id === a.accountId) ?? null)
+        .catch(() => null), // the broker is final when the lookup fails
+      config.maxDailyLoss > 0
+        ? trades(a.accountId, tradingDayStart(new Date(t0)).toISOString(), undefined, pre).then(
+            (t) => ({ t }),
+            (err: unknown) => ({ err }),
+          )
+        : null,
+    ]);
+    const before = positionOn(positions, a.contractId);
+    const currentNet = before.net;
+    const entryTypes: number[] = [ORDER_TYPES.limit, ORDER_TYPES.join_bid, ORDER_TYPES.join_ask];
+    const pendingSameSide = orders
+      .filter((o) => o.contractId === a.contractId && o.side === SIDES[a.side] && entryTypes.includes(o.type as number))
+      .reduce((n, o) => n + (o.size as number), 0);
+    const exposure = { currentNet, currentSize: before.size, pendingSameSide, side: a.side, size: a.size };
+    const accountName = (account?.name as string | undefined) ?? `#${a.accountId}`;
+
+    // Opening = anything but an exit no larger than a known position; reversals and unknown directions open.
+    const opening = increasesExposure(exposure);
+    if (opening) {
+      // With an unknown direction the order may be an exit, so canTrade alone does not refuse it: the broker decides.
+      if (account?.canTrade === false && currentNet !== null) {
+        const msg = `Blocked by risk guardrail: account ${accountName} has canTrade=false (locked by the firm); only orders that reduce a position are allowed.`;
+        await journal
+          .add({ kind: "order_blocked", text: `${msg} | rationale: ${a.rationale}`, accountId: a.accountId, contractId: a.contractId })
+          .catch(() => {});
+        return { ...json({ orderId: null, success: false, errorCode: 4, errorName: PLACE_ERRORS[4], errorMessage: msg }), isError: true };
+      }
+      try {
+        if (today) {
+          if ("err" in today) throw today.err;
+          assertDailyLoss(config, realizedNet(today.t));
+        }
+        assertPositionLimit(config, exposure);
+      } catch (e) {
+        // An unknown direction cannot be told apart from an add, so these fail closed; close_position still exits.
+        if (e instanceof RiskError && currentNet === null) throw new RiskError(`${e.message} Position direction unknown; use close_position to exit.`);
+        throw e;
+      }
+    }
+
+    const protect = a.type === "market" && !!a.stopLossBracket && opening;
+    const signed = signedBrackets(a.side, a.stopLossBracket?.ticks, a.takeProfitBracket?.ticks);
+    const customTag = a.customTag || newCustomTag();
+    // A protected entry must leave time for the fill check and a flatten; the client looks the order up by tag within `placeBy`.
+    const placeBy = protect ? deadline - PLACE_BY_MS : deadline;
+    const request = { side: a.side, type: a.type, size: a.size, limitPrice: a.limitPrice, stopPrice: a.stopPrice, trailPrice: a.trailPrice, stopLossBracket: a.stopLossBracket, takeProfitBracket: a.takeProfitBracket };
+
+    let res: ApiEnvelope & { orderId: number | null; recoveredByCustomTag?: boolean };
+    try {
+      res = await client.post<ApiEnvelope & { orderId: number | null }>(
+        "/api/Order/place",
+        {
+          accountId: a.accountId,
+          contractId: a.contractId,
+          type: ORDER_TYPES[a.type],
+          side: SIDES[a.side],
+          size: a.size,
+          limitPrice: a.limitPrice ?? null,
+          stopPrice: a.stopPrice ?? null,
+          trailPrice: a.trailPrice ?? null,
+          customTag,
+          stopLossBracket: a.stopLossBracket ? { ticks: signed.stop, type: ORDER_TYPES[a.stopLossBracket.type] } : null,
+          takeProfitBracket: a.takeProfitBracket ? { ticks: signed.target, type: ORDER_TYPES[a.takeProfitBracket.type] } : null,
+        },
+        { allowFailure: true, timeoutMs: Math.max(500, placeBy - TAG_LOOKUP_MS - now()), deadline: placeBy },
+      );
+    } catch (e) {
+      if (!(e instanceof OrderOutcomeUnknownError)) throw e;
+      const result = { orderId: null, customTag, outcome: "unknown", success: false, errorMessage: e.message };
+      await journal
+        .add({ kind: "order_placed", text: a.rationale, accountId: a.accountId, contractId: a.contractId, data: { request, result, positionBefore: currentNet, sizeBefore: before.size } })
+        .catch(() => {});
+      return { ...json(result), isError: true };
+    }
+
+    let result: Record<string, unknown> = { orderId: res.orderId, customTag, ...outcome(res, PLACE_ERRORS) };
+    if (res.recoveredByCustomTag) result.recoveredByCustomTag = true;
+
+    const finalRefusal = res.errorCode === 4 || res.errorCode === 5;
+    if (!res.success && !finalRefusal && (a.stopLossBracket || a.takeProfitBracket) && /Position Brackets/i.test(res.errorMessage ?? "")) {
+      // Not in Auto OCO mode: nothing was opened, and an entry is never sent without its brackets.
+      const setup = `Account ${accountName} rejects bracket orders: enable Auto OCO Brackets on the TopstepX dashboard`;
+      warn(setup);
+      await journal
+        .add({ kind: "order_blocked", text: setup, accountId: a.accountId, contractId: a.contractId, tags: ["account-setup", "auto-oco"], data: { accountId: a.accountId, contractId: a.contractId, errorCode: res.errorCode, errorMessage: res.errorMessage } })
+        .catch(() => {});
+      result.errorMessage = `${res.errorMessage} Enable Auto OCO Brackets for this account in the TopstepX dashboard; entries are not sent without brackets.`;
+    }
+
+    let protection: Protection | undefined;
+    if (res.success && res.orderId != null && protect) {
+      protection = await flow.protectEntry({
+        accountId: a.accountId, contractId: a.contractId, side: a.side, orderId: res.orderId,
+        before, targetRequested: !!a.takeProfitBracket, deadline,
+      });
+    } else if (res.success && a.stopLossBracket && opening && a.type !== "market") {
+      protection = { status: "pending_fill", stopOrderId: null, filledSize: null, fillPrice: null, targetPlaced: !!a.takeProfitBracket, message: "Resting entry: its bracket legs attach when it fills." };
+    }
+    if (protection) result = { ...result, protection };
+    // Nothing was opened: not an entry, so not success (the orderId stays for the record).
+    if (protection?.status === "not_filled") {
+      result = { ...result, success: false, errorCode: 2, errorName: PLACE_ERRORS[2], errorMessage: protection.message };
+    }
+    // The caller reads errorMessage on an error reply; an unverified flatten must say a position may be open.
+    if (protection?.status === "unknown") result.errorMessage = protection.message;
+
+    await journal
+      .add({ kind: "order_placed", text: a.rationale, accountId: a.accountId, contractId: a.contractId, orderId: res.orderId ?? undefined, data: { request, result, positionBefore: currentNet, sizeBefore: before.size } })
+      .catch(() => {});
+    const isError = !result.success || protection?.status === "unknown";
+    return isError ? { ...json(result), isError: true } : json(result);
   }
 
   // ── Session / config ────────────────────────────────────────────────
@@ -386,7 +562,9 @@ export function createServer(deps: Deps): McpServer {
       title: "Place order",
       description:
         "Submit an order. side: buy|sell. type: market | limit (needs limitPrice) | stop (needs stopPrice) | trailing_stop (needs trailPrice = absolute price level, NOT a distance) | join_bid | join_ask. " +
-        "Brackets (stopLossBracket/takeProfitBracket, in ticks) only work if the account uses Auto OCO Brackets; otherwise place a separate stop order after the fill. " +
+        `Brackets (stopLossBracket/takeProfitBracket) are distances in ticks (at least ${MIN_BRACKET_TICKS}); the server signs them by side. They need Auto OCO Brackets on the account; ` +
+        "if the broker refuses them the entry is not sent. After a market entry with a stopLossBracket the server waits for the fill and confirms the stop leg; " +
+        "if it cannot, it closes the position (see `protection.status` in the result). " +
         "Server guardrails may block the order. `rationale` is required and saved to the journal so you can learn from the outcome.",
       inputSchema: {
         accountId,
@@ -407,75 +585,9 @@ export function createServer(deps: Deps): McpServer {
       },
       annotations: write,
     },
-    async (a: {
-      accountId: number;
-      contractId: string;
-      side: "buy" | "sell";
-      type: (typeof PLACEABLE_ORDER_TYPES)[number];
-      size: number;
-      limitPrice?: number;
-      stopPrice?: number;
-      trailPrice?: number;
-      stopLossBracket?: { ticks: number; type: (typeof PLACEABLE_ORDER_TYPES)[number] };
-      takeProfitBracket?: { ticks: number; type: (typeof PLACEABLE_ORDER_TYPES)[number] };
-      customTag?: string;
-      rationale: string;
-    }) => {
+    async (a: PlaceArgs) => {
       try {
-        if (a.type === "limit" && a.limitPrice === undefined) throw new RiskError("limit orders require limitPrice.");
-        if (a.type === "stop" && a.stopPrice === undefined) throw new RiskError("stop orders require stopPrice.");
-        if (a.type === "trailing_stop" && a.trailPrice === undefined) throw new RiskError("trailing_stop orders require trailPrice.");
-
-        assertTradingAllowed(config, a.accountId);
-        assertSymbolAllowed(config, a.contractId);
-        assertOrderSize(config, a.size);
-
-        const [positions, orders] = await Promise.all([openPositions(a.accountId), openOrders(a.accountId)]);
-        const currentNet = positions
-          .filter((p) => p.contractId === a.contractId)
-          .reduce((n, p) => n + (p.type === 1 ? 1 : p.type === 2 ? -1 : 0) * (p.size as number), 0);
-        const entryTypes: number[] = [ORDER_TYPES.limit, ORDER_TYPES.join_bid, ORDER_TYPES.join_ask];
-        const pendingSameSide = orders
-          .filter((o) => o.contractId === a.contractId && o.side === SIDES[a.side] && entryTypes.includes(o.type as number))
-          .reduce((n, o) => n + (o.size as number), 0);
-        const exposure = { currentNet, pendingSameSide, side: a.side, size: a.size };
-
-        if (increasesExposure(exposure)) {
-          if (config.maxDailyLoss > 0) {
-            assertDailyLoss(config, realizedNet(await trades(a.accountId, tradingDayStart().toISOString())));
-          }
-          assertPositionLimit(config, exposure);
-        }
-
-        const res = await client.post<ApiEnvelope & { orderId: number | null }>(
-          "/api/Order/place",
-          {
-            accountId: a.accountId,
-            contractId: a.contractId,
-            type: ORDER_TYPES[a.type],
-            side: SIDES[a.side],
-            size: a.size,
-            limitPrice: a.limitPrice ?? null,
-            stopPrice: a.stopPrice ?? null,
-            trailPrice: a.trailPrice ?? null,
-            customTag: a.customTag ?? null,
-            stopLossBracket: a.stopLossBracket ? { ticks: a.stopLossBracket.ticks, type: ORDER_TYPES[a.stopLossBracket.type] } : null,
-            takeProfitBracket: a.takeProfitBracket
-              ? { ticks: a.takeProfitBracket.ticks, type: ORDER_TYPES[a.takeProfitBracket.type] }
-              : null,
-          },
-          { allowFailure: true },
-        );
-        const result = { orderId: res.orderId, ...outcome(res, PLACE_ERRORS) };
-        await journal.add({
-          kind: "order_placed",
-          text: a.rationale,
-          accountId: a.accountId,
-          contractId: a.contractId,
-          orderId: res.orderId ?? undefined,
-          data: { request: { side: a.side, type: a.type, size: a.size, limitPrice: a.limitPrice, stopPrice: a.stopPrice, trailPrice: a.trailPrice, stopLossBracket: a.stopLossBracket, takeProfitBracket: a.takeProfitBracket }, result, positionBefore: currentNet },
-        });
-        return res.success ? json(result) : { ...json(result), isError: true };
+        return await placeOrder(a);
       } catch (e) {
         if (e instanceof RiskError) {
           await journal
@@ -517,7 +629,7 @@ export function createServer(deps: Deps): McpServer {
           stopPrice: a.stopPrice ?? null,
           trailPrice: a.trailPrice ?? null,
         },
-        { allowFailure: true },
+        { allowFailure: true, ...withinBudget() },
       );
       if (a.reason) await journal.add({ kind: "note", text: `modify order ${a.orderId}: ${a.reason}`, accountId: a.accountId, orderId: a.orderId });
       return outcome(res, ORDER_EDIT_ERRORS);
@@ -534,7 +646,7 @@ export function createServer(deps: Deps): McpServer {
     },
     handler(async (a: { accountId: number; orderId: number }) => {
       assertTradingAllowed(config, a.accountId);
-      return outcome(await client.post<ApiEnvelope>("/api/Order/cancel", a, { allowFailure: true }), ORDER_EDIT_ERRORS);
+      return outcome(await client.post<ApiEnvelope>("/api/Order/cancel", a, { allowFailure: true, ...withinBudget() }), ORDER_EDIT_ERRORS);
     }),
   );
 
@@ -543,20 +655,31 @@ export function createServer(deps: Deps): McpServer {
     {
       title: "Close position",
       description:
-        "Flatten the whole position in a contract at market. Does NOT cancel resting stop/target orders; check list_open_orders and cancel leftovers.",
+        "Flatten the whole position in a contract at market, then cancel every working order on that contract (stop/target legs and any other orders), then verify. " +
+        'status: "flat" (no position, no working orders), "still_open" (the position is still there or could not be read; its orders are left in place so it keeps its stop) or ' +
+        '"legs_left" (flat, but working orders remain or could not be read). The last two are errors: check list_open_positions and list_open_orders.',
       inputSchema: { accountId, contractId, reason: z.string().optional().describe("Why; saved to the journal.") },
       annotations: write,
     },
-    handler(async (a: { accountId: number; contractId: string; reason?: string }) => {
-      assertTradingAllowed(config, a.accountId);
-      const res = await client.post<ApiEnvelope>(
-        "/api/Position/closeContract",
-        { accountId: a.accountId, contractId: a.contractId },
-        { allowFailure: true },
-      );
-      await journal.add({ kind: "exit", text: a.reason ?? "close_position", accountId: a.accountId, contractId: a.contractId, data: outcome(res, CLOSE_ERRORS) });
-      return outcome(res, CLOSE_ERRORS);
-    }),
+    async (a: { accountId: number; contractId: string; reason?: string }) => {
+      try {
+        assertTradingAllowed(config, a.accountId);
+        const fl = await flow.flatten(a.accountId, a.contractId, now() + CALL_BUDGET_MS, 4_000);
+        const result = {
+          status: fl.status,
+          success: fl.status === "flat",
+          close: fl.close.errorCode !== undefined ? outcome(fl.close as ApiEnvelope, CLOSE_ERRORS) : { success: false, errorMessage: fl.close.errorMessage },
+          positionNet: fl.positionNet,
+          positionSize: fl.positionSize,
+          cancelledOrderIds: fl.cancelledOrderIds,
+          remainingOrderIds: fl.remainingOrderIds,
+        };
+        await journal.add({ kind: "exit", text: a.reason ?? "close_position", accountId: a.accountId, contractId: a.contractId, data: result }).catch(() => {});
+        return fl.status === "flat" ? json(result) : { ...json(result), isError: true };
+      } catch (e) {
+        return failure(describeError(e));
+      }
+    },
   );
 
   server.registerTool(
@@ -572,7 +695,7 @@ export function createServer(deps: Deps): McpServer {
       const res = await client.post<ApiEnvelope>(
         "/api/Position/partialCloseContract",
         { accountId: a.accountId, contractId: a.contractId, size: a.size },
-        { allowFailure: true },
+        { allowFailure: true, ...withinBudget() },
       );
       await journal.add({ kind: "exit", text: a.reason ?? `partial close ${a.size}`, accountId: a.accountId, contractId: a.contractId, data: outcome(res, CLOSE_ERRORS) });
       return outcome(res, CLOSE_ERRORS);
