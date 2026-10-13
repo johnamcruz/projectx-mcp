@@ -197,7 +197,7 @@ export interface Timers {
   cancel: (handle: unknown) => void;
 }
 
-const realTimers: Timers = {
+export const realTimers: Timers = {
   every: (ms, fn) => {
     const h = setInterval(fn, ms);
     h.unref?.();

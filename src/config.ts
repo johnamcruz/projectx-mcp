@@ -17,6 +17,14 @@ export interface Config {
   reconcileSeconds: number;
   /** An uncovered position must be seen on two checks at least this far apart before it is flattened. */
   reconcileGraceSeconds: number;
+  /** Root symbols the flow recorder subscribes (recorder mode only). */
+  flowSymbols: string[];
+  /** Where the recorder writes complete minutes and MCP servers read them back; null = off. */
+  flowDir: string | null;
+  /** Default large-print threshold in contracts. */
+  flowLargePrint: number;
+  /** Most contracts with order-flow subscriptions per process. */
+  flowMaxContracts: number;
 }
 
 type Env = Record<string, string | undefined>;
@@ -68,6 +76,10 @@ export function loadConfig(env: Env = process.env): Config {
     journalPath: expandHome(env.PROJECTX_JOURNAL_PATH?.trim() || "~/.projectx-mcp/journal.jsonl"),
     reconcileSeconds: num(env, "PROJECTX_RECONCILE_SECONDS", 30),
     reconcileGraceSeconds: num(env, "PROJECTX_RECONCILE_GRACE_SECONDS", 15),
+    flowSymbols: list(env.PROJECTX_FLOW_SYMBOLS).map((s) => s.toUpperCase()),
+    flowDir: env.PROJECTX_FLOW_DIR?.trim() ? expandHome(env.PROJECTX_FLOW_DIR.trim()) : null,
+    flowLargePrint: num(env, "PROJECTX_FLOW_LARGE_PRINT", 10),
+    flowMaxContracts: Math.max(1, Math.floor(num(env, "PROJECTX_FLOW_MAX_CONTRACTS", 6))),
   };
 }
 
@@ -95,5 +107,10 @@ export function publicConfig(c: Config) {
     // The protection check runs only with trading enabled.
     reconcileSeconds: reconcileInterval(c) || "off",
     reconcileGraceSeconds: c.reconcileGraceSeconds,
+    flow: {
+      largePrint: c.flowLargePrint,
+      maxContracts: c.flowMaxContracts,
+      recordedBackfill: c.flowDir ? "on" : "off",
+    },
   };
 }

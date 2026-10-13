@@ -14,12 +14,16 @@ describe("tool registry", () => {
         "cancel_order", "close_position", "get_account_snapshot", "get_bars", "get_contract", "get_performance", "get_quote",
         "get_server_config", "journal_add", "journal_read", "list_accounts", "list_available_contracts", "list_open_orders",
         "list_open_positions", "modify_order", "partial_close_position", "place_order", "search_contracts", "search_orders", "search_trades",
+        "get_order_flow", "get_trades", "get_footprint", "get_market_depth", "get_top_of_book",
       ].sort(),
     );
     for (const w of ["place_order", "modify_order", "cancel_order", "close_position", "partial_close_position"]) {
       expect(byName[w].annotations).toMatchObject({ readOnlyHint: false, destructiveHint: true });
     }
     expect(byName.get_bars.annotations?.readOnlyHint).toBe(true);
+    for (const r of ["get_order_flow", "get_trades", "get_footprint", "get_market_depth", "get_top_of_book"]) {
+      expect(byName[r].annotations).toMatchObject({ readOnlyHint: true });
+    }
   });
 
   it("serves the guide resource and the session prompt", async () => {
