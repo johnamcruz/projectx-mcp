@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { OrderOutcomeUnknownError, ProjectXError, newCustomTag, type ApiEnvelope, type PostOptions, type ProjectXClient } from "./client.js";
-import { publicConfig, type Config } from "./config.js";
+import { BARS_FLOW_WINDOW_MAX, BARS_FLOW_WINDOWS_MAX, publicConfig, type Config } from "./config.js";
 import {
   BAR_UNITS,
   ORDER_TYPES,
@@ -447,7 +447,7 @@ export function createServer(deps: Deps): McpServer {
       description:
         "OHLCV bars for a contract, returned oldest→newest. t=bar open time (UTC), o/h/l/c=prices, v=volume. " +
         "Defaults: endTime=now, startTime chosen to cover `limit` bars. Max 20,000 bars; rate limit 50 requests / 30s. " +
-        "includeOrderFlow=true adds `flow` to each minute or hour bar: bv, sv, delta, trades, volume, vwap, ofiTrade, ofiQuote, imbalance, largeBuy, largeSell, complete, " +
+        "includeOrderFlow=true (default: this server's configuration, see get_server_config flow.barsOrderFlow) adds `flow` to each minute or hour bar: bv, sv, delta, trades, volume, vwap, ofiTrade, ofiQuote, imbalance, largeBuy, largeSell, complete, " +
         "and `windows` (ofiTrade and delta over the last n bar spans for each n in flowWindows), summed from the same per-minute rows get_order_flow returns. " +
         "Every value is null unless all the bar's minutes are complete. MNQ and MES bars carry NQ's and ES's flow (same expiry). The flow part adds at most 3 s. Data starts when this server subscribed, unless the flow recorder wrote it.",
       inputSchema: {
@@ -459,8 +459,15 @@ export function createServer(deps: Deps): McpServer {
         endTime: isoTime.optional(),
         includePartialBar: z.boolean().default(false),
         live: z.boolean().default(false),
-        includeOrderFlow: z.boolean().default(false).describe("Add per-bar order flow (minute and hour bars). Default false."),
-        flowWindows: z.array(z.number().int().min(1).max(50)).max(5).default([]).describe("With includeOrderFlow: window sizes in bars, e.g. [5]."),
+        includeOrderFlow: z
+          .boolean()
+          .optional()
+          .describe("Add per-bar order flow (minute and hour bars). Default: the server's PROJECTX_BARS_ORDER_FLOW (false unless set)."),
+        flowWindows: z
+          .array(z.number().int().min(1).max(BARS_FLOW_WINDOW_MAX))
+          .max(BARS_FLOW_WINDOWS_MAX)
+          .optional()
+          .describe("With includeOrderFlow: window sizes in bars, e.g. [5]. Default: the server's PROJECTX_BARS_FLOW_WINDOWS (none unless set)."),
       },
       annotations: read,
     },
@@ -473,8 +480,8 @@ export function createServer(deps: Deps): McpServer {
       endTime?: string;
       includePartialBar: boolean;
       live: boolean;
-      includeOrderFlow: boolean;
-      flowWindows: number[];
+      includeOrderFlow?: boolean;
+      flowWindows?: number[];
     }) => {
       const end = a.endTime ? new Date(a.endTime) : new Date();
       // 2x the span plus 4 days so weekends and overnight gaps still yield `limit` bars.
@@ -492,8 +499,9 @@ export function createServer(deps: Deps): McpServer {
       });
       const bars = [...res.bars].sort((x, y) => Date.parse(x.t) - Date.parse(y.t));
       const base = { contractId: a.contractId, barSize: `${a.unitNumber} ${a.unit}`, count: bars.length };
-      if (!a.includeOrderFlow) return { ...base, bars };
-      const windows = [...new Set(a.flowWindows)].sort((x, y) => x - y);
+      // An explicit argument (even false or []) wins over the server's configured default.
+      if (!(a.includeOrderFlow ?? config.barsOrderFlow)) return { ...base, bars };
+      const windows = [...new Set(a.flowWindows ?? config.barsFlowWindows)].sort((x, y) => x - y);
       return { ...base, ...(await barsWithFlow({ config, flow: deps.flow, now, warn }, a.contractId, bars, a.unit, a.unitNumber, windows)) };
     }),
   );

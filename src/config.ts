@@ -25,7 +25,15 @@ export interface Config {
   flowLargePrint: number;
   /** Most contracts with order-flow subscriptions per process. */
   flowMaxContracts: number;
+  /** get_bars adds order flow when the call doesn't pass includeOrderFlow. */
+  barsOrderFlow: boolean;
+  /** get_bars' flow windows when the call doesn't pass flowWindows. */
+  barsFlowWindows: number[];
 }
+
+/** get_bars' flowWindows limits: at most this many windows, each 1..BARS_FLOW_WINDOW_MAX bars. */
+export const BARS_FLOW_WINDOWS_MAX = 5;
+export const BARS_FLOW_WINDOW_MAX = 50;
 
 type Env = Record<string, string | undefined>;
 
@@ -42,6 +50,38 @@ function num(env: Env, key: string, fallback: number): number {
   const n = Number(raw);
   if (!Number.isFinite(n) || n < 0) throw new Error(`${key} must be a non-negative number, got "${raw}"`);
   return n;
+}
+
+/** Trimmed and lowercased; empty is false; only "true" or "false" are accepted. */
+function bool(env: Env, key: string): boolean {
+  const raw = (env[key] ?? "").trim();
+  const v = raw.toLowerCase();
+  if (v === "" || v === "false") return false;
+  if (v === "true") return true;
+  throw new Error(`${key} must be "true" or "false", got "${raw}"`);
+}
+
+/**
+ * A comma list of get_bars flow windows. Unset or blank is none. Each item is trimmed, then checked in order:
+ * digits only (an empty item is invalid), 1..BARS_FLOW_WINDOW_MAX, no duplicates, at most BARS_FLOW_WINDOWS_MAX.
+ */
+function flowWindows(env: Env, key: string): number[] {
+  const raw = (env[key] ?? "").trim();
+  if (!raw) return [];
+  const items = raw.split(",").map((s) => s.trim());
+  const bad = (item: string) => new Error(`${key} windows must be whole numbers from 1 to ${BARS_FLOW_WINDOW_MAX}, got "${item}"`);
+  for (const item of items) if (!/^\d+$/.test(item)) throw bad(item);
+  const values = items.map(Number);
+  values.forEach((n, i) => {
+    if (n < 1 || n > BARS_FLOW_WINDOW_MAX) throw bad(items[i]);
+  });
+  const seen = new Set<number>();
+  for (const n of values) {
+    if (seen.has(n)) throw new Error(`${key} has a duplicate window ${n}`);
+    seen.add(n);
+  }
+  if (values.length > BARS_FLOW_WINDOWS_MAX) throw new Error(`${key} allows at most ${BARS_FLOW_WINDOWS_MAX} windows`);
+  return values;
 }
 
 function expandHome(path: string): string {
@@ -80,6 +120,8 @@ export function loadConfig(env: Env = process.env): Config {
     flowDir: env.PROJECTX_FLOW_DIR?.trim() ? expandHome(env.PROJECTX_FLOW_DIR.trim()) : null,
     flowLargePrint: num(env, "PROJECTX_FLOW_LARGE_PRINT", 10),
     flowMaxContracts: Math.max(1, Math.floor(num(env, "PROJECTX_FLOW_MAX_CONTRACTS", 6))),
+    barsOrderFlow: bool(env, "PROJECTX_BARS_ORDER_FLOW"),
+    barsFlowWindows: flowWindows(env, "PROJECTX_BARS_FLOW_WINDOWS"),
   };
 }
 
@@ -111,6 +153,9 @@ export function publicConfig(c: Config) {
       largePrint: c.flowLargePrint,
       maxContracts: c.flowMaxContracts,
       recordedBackfill: c.flowDir ? "on" : "off",
+      // get_bars' defaults when a call doesn't pass includeOrderFlow / flowWindows.
+      barsOrderFlow: c.barsOrderFlow,
+      barsFlowWindows: c.barsFlowWindows,
     },
   };
 }
