@@ -439,7 +439,7 @@ export class FlowFeed {
    * Start the feeds for a contract on first use (within the contract cap) and
    * wait up to `waitMs` for the subscriptions. Data starts now; nothing before.
    */
-  async ensure(contractId: string, waitMs = this.o.subscribeWaitMs ?? SUBSCRIBE_WAIT_MS): Promise<void> {
+  async ensure(contractId: string, waitMs = this.o.subscribeWaitMs ?? SUBSCRIBE_WAIT_MS, opts: { dropLateRefusal?: boolean } = {}): Promise<void> {
     let st = this.states.get(contractId);
     if (!st && this.o.validate) {
       this.checkCap();
@@ -490,9 +490,17 @@ export class FlowFeed {
     const state = st;
     if (KINDS.every((k) => state.live[k])) return;
     const firstUse = state.intervals.length === 0;
+    const sub = this.subscribeMissing(state);
+    const refused = () => firstUse && !state.live.trades && !!state.errors.trades && (this.o.dropFailedSubscribes ?? true);
+    // get_bars only: a refused first subscribe is dropped when it completes, even after this caller stopped waiting.
+    if (opts.dropLateRefusal) {
+      void sub
+        .then(() => (refused() && this.states.get(contractId) === state ? this.drop(contractId, false) : undefined))
+        .catch(() => {});
+    }
     let timer: ReturnType<typeof setTimeout> | undefined;
     const done = await Promise.race([
-      this.subscribeMissing(state).then(() => true),
+      sub.then(() => true),
       new Promise<boolean>((r) => {
         timer = setTimeout(() => r(false), waitMs);
         timer.unref?.();
@@ -500,7 +508,7 @@ export class FlowFeed {
     ]);
     clearTimeout(timer);
     // A first subscribe the hub refused (e.g. an unknown contract) must not hold a slot or be retried forever.
-    if (done && firstUse && !state.live.trades && state.errors.trades && (this.o.dropFailedSubscribes ?? true)) {
+    if (done && refused()) {
       await this.drop(contractId, false);
       throw new Error(`Could not subscribe to ${contractId}: ${state.errors.trades}`);
     }

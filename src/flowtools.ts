@@ -11,13 +11,17 @@ import type { Config } from "./config.js";
 import { FLOW_LIMITS, type FlowFeed } from "./flowfeed.js";
 import { readRecorded, readRecordedCsv } from "./flowstore.js";
 import {
+  EMPTY_BAR_FLOW,
   MINUTE_MS,
+  barFlow,
   cumulativeDeltas,
+  flowWindow,
   footprintBar,
   gapsOf,
   mergeRecords,
   minuteOf,
   rowOf,
+  type BarFlow,
   type MinuteRecord,
 } from "./orderflow.js";
 import { tradingDayStart } from "./risk.js";
@@ -42,6 +46,123 @@ export interface FlowToolDeps {
   warn: (line: string) => void;
 }
 
+/**
+ * Micro contracts whose bars carry the full-size contract's order flow (same
+ * expiry): micro and mini are treated the same, so MNQ bars carry NQ's flow and
+ * MES bars ES's. ProjectX names NQ `ENQ` and ES `EP` in its contract ids
+ * (CON.F.US.ENQ.Z26, CON.F.US.EP.Z26), UNVERIFIED against the live contract
+ * list; an id the broker does not know is refused by the contract check and the
+ * bars get no flow.
+ */
+export const FLOW_SOURCE_ROOT: Readonly<Record<string, string>> = Object.freeze({ MNQ: "ENQ", MES: "EP" });
+
+/** The contract whose order flow a contract's bars carry: the full-size contract for a listed micro, else itself. */
+export function flowSourceContract(contractId: string): string {
+  const parts = contractId.split(".");
+  const src = parts.length >= 5 ? FLOW_SOURCE_ROOT[parts[3].toUpperCase()] : undefined;
+  if (!src) return contractId;
+  parts[3] = src;
+  return parts.join(".");
+}
+
+/** get_bars waits at most this long for a first flow subscription (the contract check is bounded separately). */
+export const BARS_FLOW_WAIT_MS = 1_000;
+/** The order-flow part of get_bars (contract check, subscribe, recorded read) adds at most this; then the bars get empty flow. */
+export const BARS_FLOW_BUDGET_MS = 3_000;
+
+export type BarWithFlow<B> = B & { flow: BarFlow & { windows: Record<string, { ofiTrade: number | null; delta: number | null }> } };
+
+/**
+ * get_bars' opt-in order flow: each bar [t, t + span) gets the sum of its
+ * minute rows (barFlow), plus trade OFI and delta over the last n spans for
+ * each n in `windows`. The minutes are the live rows merged with the
+ * recorder's complete minutes, exactly as get_order_flow builds them, for the
+ * flow source contract (MNQ uses NQ). Only minute and hour bars carry flow.
+ * Never throws: when the flow is unavailable every bar gets empty flow and
+ * `orderFlow.note` says why.
+ */
+export async function barsWithFlow<B extends { t: string }>(
+  d: FlowToolDeps,
+  contractId: string,
+  bars: B[],
+  unit: string,
+  unitNumber: number,
+  windows: number[],
+  budgetMs = BARS_FLOW_BUDGET_MS,
+): Promise<{ bars: Array<BarWithFlow<B>>; orderFlow: Record<string, unknown> }> {
+  const source = flowSourceContract(contractId);
+  const lp = d.config.flowLargePrint;
+  const info = { sourceContractId: source, largePrint: lp, windows };
+  const noWindows = () => Object.fromEntries(windows.map((n) => [String(n), { ofiTrade: null, delta: null }]));
+  const plain = (note: string) => ({ bars: bars.map((b) => ({ ...b, flow: { ...EMPTY_BAR_FLOW, windows: noWindows() } })), orderFlow: { ...info, note } });
+  const minutes = unit === "minute" ? unitNumber : unit === "hour" ? unitNumber * 60 : null;
+  if (minutes === null) return plain("Order flow is built from minutes: only minute and hour bars carry it.");
+  if (!d.flow) return plain("Order flow is not available on this server.");
+  const flow = d.flow;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<null>((r) => {
+    timer = setTimeout(() => r(null), budgetMs);
+    timer.unref?.();
+  });
+  const work = (async () => {
+    try {
+      await flow.ensure(source, BARS_FLOW_WAIT_MS, { dropLateRefusal: true });
+    } catch (e) {
+      return plain(`Order flow unavailable for ${source}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    try {
+      return await withFlow(d, flow, source, info, plain, bars, minutes, windows);
+    } catch (e) {
+      return plain(`Order flow for ${source} failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  })();
+  // A late answer is dropped: its reads finish in the background and change nothing.
+  const res = await Promise.race([work, late]).finally(() => clearTimeout(timer));
+  return res ?? plain(`Order flow for ${source} took longer than ${budgetMs} ms; the bars come without it.`);
+}
+
+async function withFlow<B extends { t: string }>(
+  d: FlowToolDeps,
+  flow: FlowFeed,
+  source: string,
+  info: Record<string, unknown>,
+  plain: (note: string) => { bars: Array<BarWithFlow<B>>; orderFlow: Record<string, unknown> },
+  bars: B[],
+  minutes: number,
+  windows: number[],
+): Promise<{ bars: Array<BarWithFlow<B>>; orderFlow: Record<string, unknown> }> {
+  const lp = d.config.flowLargePrint;
+  const span = minutes * MINUTE_MS;
+  const starts = bars.map((b) => Date.parse(b.t)).filter(Number.isFinite);
+  if (!starts.length) return plain("No bar has a usable time.");
+  const deepest = Math.max(1, ...windows);
+  const from = Math.min(...starts) - (deepest - 1) * span;
+  const to = Math.max(...starts) + span - MINUTE_MS;
+  const { byMinute, recorded } = await mergedMinutes(d, flow, source, from, to);
+  const memo = new Map<number, BarFlow>();
+  const spanFlow = (start: number) => {
+    let f = memo.get(start);
+    if (!f) memo.set(start, (f = barFlow(byMinute, start, minutes, lp)));
+    return f;
+  };
+  const out = bars.map((b) => {
+    // A time that does not parse (NaN) finds no minutes: empty flow and null windows.
+    const start = Date.parse(b.t);
+    return { ...b, flow: { ...spanFlow(start), windows: Object.fromEntries(windows.map((n) => [String(n), flowWindow(spanFlow, start, span, n)])) } };
+  });
+  return { bars: out, orderFlow: { ...info, recorded, note: `${COMPLETE} ${DATA_STARTS}` } };
+}
+
+/** Live records for [from, to], merged with the recorder's complete minutes (JSONL, this window only) when PROJECTX_FLOW_DIR is set. */
+async function mergedMinutes(d: FlowToolDeps, flow: FlowFeed, id: string, from: number, to: number) {
+  const live = flow.records(id, from, to);
+  const rec = d.config.flowDir ? await readRecorded(d.config.flowDir, id, from, to) : null;
+  if (rec?.error) d.warn(`order flow: reading recorded flow for ${id} failed: ${rec.error}`);
+  const byMinute = mergeRecords(live, rec?.records ?? []);
+  const recorded = rec ? { rows: rec.records.length, truncated: rec.truncated, error: rec.error } : "off (PROJECTX_FLOW_DIR not set)";
+  return { byMinute, recorded };
+}
+
 export function registerFlowTools(server: McpServer, d: FlowToolDeps): void {
   const read = { readOnlyHint: true, openWorldHint: true } as const;
 
@@ -53,15 +174,7 @@ export function registerFlowTools(server: McpServer, d: FlowToolDeps): void {
     return d.flow;
   }
 
-  /** Live records for [from, to], merged with the recorder's complete minutes (JSONL, this window only) when PROJECTX_FLOW_DIR is set. */
-  async function merged(flow: FlowFeed, id: string, from: number, to: number) {
-    const live = flow.records(id, from, to);
-    const rec = d.config.flowDir ? await readRecorded(d.config.flowDir, id, from, to) : null;
-    if (rec?.error) d.warn(`order flow: reading recorded flow for ${id} failed: ${rec.error}`);
-    const byMinute = mergeRecords(live, rec?.records ?? []);
-    const recorded = rec ? { rows: rec.records.length, truncated: rec.truncated, error: rec.error } : "off (PROJECTX_FLOW_DIR not set)";
-    return { byMinute, recorded };
-  }
+  const merged = (flow: FlowFeed, id: string, from: number, to: number) => mergedMinutes(d, flow, id, from, to);
 
   /**
    * Buy/sell volume per minute from the session start up to `before`, for the

@@ -816,3 +816,89 @@ export function gapsOf(byMinute: ReadonlyMap<number, MinuteRecord>, from: number
   close(minuteOf(to) + MINUTE_MS);
   return gaps;
 }
+
+/** Order flow over one bar span, built from the per-minute rows (`rowOf`) exactly as get_order_flow reports them. */
+export interface BarFlow {
+  bv: number | null;
+  sv: number | null;
+  delta: number | null;
+  trades: number | null;
+  volume: number | null;
+  /** Volume-weighted mean of the minutes' vwap; null with no volume. */
+  vwap: number | null;
+  /** (bv - sv) / (bv + sv); null with no sided volume. */
+  ofiTrade: number | null;
+  /** Sum of the minutes' ofiQuote; null when any minute's is null. */
+  ofiQuote: number | null;
+  /** Mean of the minutes' non-null bookImbalance; null when none has one. */
+  imbalance: number | null;
+  largeBuy: number | null;
+  largeSell: number | null;
+  /** Every minute of the span is present and complete. Otherwise every other field is null. */
+  complete: boolean;
+}
+
+export const EMPTY_BAR_FLOW: Readonly<BarFlow> = Object.freeze({
+  bv: null, sv: null, delta: null, trades: null, volume: null, vwap: null, ofiTrade: null, ofiQuote: null, imbalance: null, largeBuy: null, largeSell: null, complete: false,
+});
+
+/**
+ * Bar flow for the span [start, start + minutes): the sum of its minute rows.
+ * Only a span whose minutes are all present and complete has values; any other
+ * span is EMPTY_BAR_FLOW (complete false, every field null).
+ */
+export function barFlow(byMinute: ReadonlyMap<number, MinuteRecord>, start: number, minutes: number, largePrint: number): BarFlow {
+  const rows: MinuteRow[] = [];
+  for (let k = 0; k < minutes; k++) {
+    const r = byMinute.get(start + k * MINUTE_MS);
+    if (!r?.complete) return { ...EMPTY_BAR_FLOW };
+    rows.push(rowOf(r, largePrint, null));
+  }
+  let bv = 0, sv = 0, trades = 0, volume = 0, pv = 0, largeBuy = 0, largeSell = 0, ofiQuote: number | null = 0, imbSum = 0, imbN = 0;
+  for (const r of rows) {
+    bv += r.bv;
+    sv += r.sv;
+    trades += r.trades;
+    volume += r.volume;
+    if (r.vwap !== null) pv += r.vwap * r.volume;
+    largeBuy += r.largeBuyVolume;
+    largeSell += r.largeSellVolume;
+    ofiQuote = ofiQuote === null || r.ofiQuote === null ? null : ofiQuote + r.ofiQuote;
+    if (r.bookImbalance !== null) {
+      imbSum += r.bookImbalance;
+      imbN++;
+    }
+  }
+  return {
+    bv,
+    sv,
+    delta: bv - sv,
+    trades,
+    volume,
+    vwap: volume > 0 ? Number((pv / volume).toFixed(10)) : null,
+    ofiTrade: bv + sv > 0 ? (bv - sv) / (bv + sv) : null,
+    ofiQuote,
+    imbalance: imbN > 0 ? imbSum / imbN : null,
+    largeBuy,
+    largeSell,
+    complete: true,
+  };
+}
+
+/**
+ * Trade OFI and delta over the n bar spans ending with the one at `start`
+ * (spans of `spanMs`, going back in time, whether or not a bar exists there).
+ * `spanFlow` gives a span's flow (callers memoize barFlow). Null unless every
+ * one of those spans is complete.
+ */
+export function flowWindow(spanFlow: (start: number) => BarFlow, start: number, spanMs: number, n: number): { ofiTrade: number | null; delta: number | null } {
+  let bv = 0;
+  let sv = 0;
+  for (let k = 0; k < n; k++) {
+    const f = spanFlow(start - k * spanMs);
+    if (!f.complete) return { ofiTrade: null, delta: null };
+    bv += f.bv!;
+    sv += f.sv!;
+  }
+  return { ofiTrade: bv + sv > 0 ? (bv - sv) / (bv + sv) : null, delta: bv - sv };
+}

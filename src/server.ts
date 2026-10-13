@@ -16,7 +16,7 @@ import { JOURNAL_KINDS, Journal, RECORD_CAP_MS, bounded } from "./journal.js";
 import { summarizeTrades, type Trade } from "./performance.js";
 import { CALL_BUDGET_MS, MIN_BRACKET_TICKS, PLACE_BY_MS, positionOn, protectionFlow, signedBrackets, type Protection } from "./protect.js";
 import type { FlowFeed } from "./flowfeed.js";
-import { registerFlowTools } from "./flowtools.js";
+import { barsWithFlow, registerFlowTools } from "./flowtools.js";
 import { describeError, failure, handler, json } from "./tooling.js";
 import type { QuoteSource } from "./realtime.js";
 import {
@@ -446,7 +446,10 @@ export function createServer(deps: Deps): McpServer {
       title: "Historical bars",
       description:
         "OHLCV bars for a contract, returned oldest→newest. t=bar open time (UTC), o/h/l/c=prices, v=volume. " +
-        "Defaults: endTime=now, startTime chosen to cover `limit` bars. Max 20,000 bars; rate limit 50 requests / 30s.",
+        "Defaults: endTime=now, startTime chosen to cover `limit` bars. Max 20,000 bars; rate limit 50 requests / 30s. " +
+        "includeOrderFlow=true adds `flow` to each minute or hour bar: bv, sv, delta, trades, volume, vwap, ofiTrade, ofiQuote, imbalance, largeBuy, largeSell, complete, " +
+        "and `windows` (ofiTrade and delta over the last n bar spans for each n in flowWindows), summed from the same per-minute rows get_order_flow returns. " +
+        "Every value is null unless all the bar's minutes are complete. MNQ and MES bars carry NQ's and ES's flow (same expiry). The flow part adds at most 3 s. Data starts when this server subscribed, unless the flow recorder wrote it.",
       inputSchema: {
         contractId,
         unit: z.enum(Object.keys(BAR_UNITS) as [keyof typeof BAR_UNITS]).default("minute"),
@@ -456,6 +459,8 @@ export function createServer(deps: Deps): McpServer {
         endTime: isoTime.optional(),
         includePartialBar: z.boolean().default(false),
         live: z.boolean().default(false),
+        includeOrderFlow: z.boolean().default(false).describe("Add per-bar order flow (minute and hour bars). Default false."),
+        flowWindows: z.array(z.number().int().min(1).max(50)).max(5).default([]).describe("With includeOrderFlow: window sizes in bars, e.g. [5]."),
       },
       annotations: read,
     },
@@ -468,6 +473,8 @@ export function createServer(deps: Deps): McpServer {
       endTime?: string;
       includePartialBar: boolean;
       live: boolean;
+      includeOrderFlow: boolean;
+      flowWindows: number[];
     }) => {
       const end = a.endTime ? new Date(a.endTime) : new Date();
       // 2x the span plus 4 days so weekends and overnight gaps still yield `limit` bars.
@@ -484,7 +491,10 @@ export function createServer(deps: Deps): McpServer {
         includePartialBar: a.includePartialBar,
       });
       const bars = [...res.bars].sort((x, y) => Date.parse(x.t) - Date.parse(y.t));
-      return { contractId: a.contractId, barSize: `${a.unitNumber} ${a.unit}`, count: bars.length, bars };
+      const base = { contractId: a.contractId, barSize: `${a.unitNumber} ${a.unit}`, count: bars.length };
+      if (!a.includeOrderFlow) return { ...base, bars };
+      const windows = [...new Set(a.flowWindows)].sort((x, y) => x - y);
+      return { ...base, ...(await barsWithFlow({ config, flow: deps.flow, now, warn }, a.contractId, bars, a.unit, a.unitNumber, windows)) };
     }),
   );
 

@@ -51,6 +51,7 @@ Notes:
 - `launchctl unload` sends SIGTERM: the recorder writes the minutes that are final, closes the hub connection and releases the lock.
 - Put the credentials (`PROJECTX_USERNAME`, `PROJECTX_API_KEY`) in the `.env` file, not in the plist.
 - MCP servers that should read the recording need the same `PROJECTX_FLOW_DIR`.
+- `get_bars` with `includeOrderFlow` gives MNQ and MES bars the full-size contract's flow (NQ and ES, contract roots `ENQ` and `EP`), and reads that contract's recorded files. For recorded flow on MNQ and MES bars, add `ENQ` and `EP` to `PROJECTX_FLOW_SYMBOLS` (e.g. `MNQ,MES,ENQ,EP`; at most `PROJECTX_FLOW_MAX_CONTRACTS`, default 6).
 - A minute is written once it settles: right after a trade arrives 2 s past its end, or 10 s after its end when none does (up to 20 s when prints arrive late). Expect rows to lag the clock by that much.
 - A minute is written only if the quote feed's volume and last price agree with the prints, so a trade subscription that dies while quotes keep flowing writes nothing rather than zeros.
 - Only complete minutes are written. Nothing is written while the market is closed, while the connection is down or silent for more than 10 s, or for the slept time if the machine sleeps; those minutes are simply missing from the files.
