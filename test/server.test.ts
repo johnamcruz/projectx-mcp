@@ -165,6 +165,38 @@ describe("place_order", () => {
     expect(entry).toMatchObject({ text: order.rationale, orderId: 42, contractId: "CON.F.US.MNQ.Z25" });
   });
 
+  it("signs a sell's brackets the other way: stop above (+ticks), target below (-ticks)", async () => {
+    const { call, api } = await setup();
+    const res = await call("place_order", {
+      ...order,
+      side: "sell",
+      type: "limit",
+      limitPrice: 21000.25,
+      stopLossBracket: { ticks: 20, type: "stop" },
+      takeProfitBracket: { ticks: 40, type: "limit" },
+    });
+    expect(res.isError).toBe(false);
+    expect(api.bodiesFor("/api/Order/place")[0]).toMatchObject({
+      side: 1, stopLossBracket: { ticks: 20, type: 4 }, takeProfitBracket: { ticks: -40, type: 1 },
+    });
+  });
+
+  it("signs brackets by side whatever sign the caller sends", async () => {
+    for (const [side, apiSide, stop, target] of [["buy", 0, -12, 30], ["sell", 1, 12, -30]] as const) {
+      for (const sign of [1, -1]) {
+        const { call, api } = await setup();
+        const res = await call("place_order", {
+          ...order, side, type: "limit", limitPrice: 21000.25,
+          stopLossBracket: { ticks: sign * 12, type: "stop" }, takeProfitBracket: { ticks: sign * 30, type: "limit" },
+        });
+        expect(res.isError).toBe(false);
+        expect(api.bodiesFor("/api/Order/place")[0]).toMatchObject({
+          side: apiSide, stopLossBracket: { ticks: stop, type: 4 }, takeProfitBracket: { ticks: target, type: 1 },
+        });
+      }
+    }
+  });
+
   it("reports API rejections with the error name", async () => {
     const { call } = await setup({
       routes: { "/api/Order/place": () => ({ orderId: 9, success: false, errorCode: 5, errorMessage: null }) },
