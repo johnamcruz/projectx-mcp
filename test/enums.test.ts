@@ -11,6 +11,27 @@ describe("enum decoration", () => {
   });
 });
 
+describe("bracket legs", () => {
+  // Rows shaped like the platform's Order/searchOpen orders (raw fields kept unchanged).
+  const row = { id: 43, accountId: 1, contractId: "CON.F.US.MNQ.Z26", status: 1, side: 1, size: 1, stopPrice: 20990, limitPrice: null, fillVolume: 0 };
+  it("marks a stop order tagged -SL as the stop leg, keeping the raw fields", () => {
+    const leg = { ...row, type: 4, customTag: "tag123-SL" };
+    expect(decorateOrder(leg)).toEqual({ ...leg, statusName: "open", typeName: "stop", sideName: "sell", bracket: { role: "stop" } });
+    expect(decorateOrder({ ...leg, status: 8 }).bracket).toEqual({ role: "stop" });
+  });
+  it("omits bracket where it can't tell: target legs, other tags, other types, no tag", () => {
+    for (const o of [
+      { ...row, type: 1, customTag: "tag123-TP" },
+      { ...row, type: 1, customTag: "x-SL" },
+      { ...row, type: 5, customTag: "x-SL" },
+      { ...row, type: 4, customTag: "x-SL-1" },
+      { ...row, type: 4, customTag: "pxm-abc" },
+      { ...row, type: 4, customTag: null },
+      { ...row, type: 4 },
+    ]) expect(decorateOrder(o)).not.toHaveProperty("bracket");
+  });
+});
+
 describe("config parsing", () => {
   const base = { PROJECTX_USERNAME: "u", PROJECTX_API_KEY: "k" };
   it("parses lists, numbers, URLs, and ~ paths", () => {
