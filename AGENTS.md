@@ -181,7 +181,7 @@ Use `get_performance` over longer windows (week, month) to check whether a setup
 | `get_quote` | Real-time last/bid/ask (SignalR market hub) |
 | `get_top_of_book` / `get_market_depth` | L1 top of book / L2 order book, live |
 | `get_trades` / `get_order_flow` / `get_footprint` | Prints, per-minute order flow, footprint bars |
-| `list_open_orders` / `search_orders` | Working orders / order history |
+| `list_open_orders` / `search_orders` | Working orders / order history. A stop bracket leg carries `bracket: { role: "stop" }` (from its `-SL` customTag). Target legs and the entry link aren't marked yet: a missing `bracket` means unknown, not "no bracket". |
 | `list_open_positions` | Open positions |
 | `search_trades` / `get_performance` | Fills / statistics (win rate, expectancy, profit factor) |
 | `place_order` / `modify_order` / `cancel_order` | Order entry and management |
