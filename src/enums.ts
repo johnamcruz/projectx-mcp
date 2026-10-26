@@ -32,9 +32,9 @@ const name = (arr: string[] | Record<number, string>, v: unknown) =>
  *
  * Only the stop leg is known: the platform tags the stop bracket it attaches with a
  * customTag ending in "-SL", on a stop order (type 4). Live evidence: the owner's earlier
- * bot that ran on this platform (algoTraderAI bots/trading_bot.py:1869, handle_user_order's
- * docstring, and :1905, `order_type == 4 and '-SL' in custom_tag`), which captured the stop
- * bracket's id that way and modified it.
+ * bot that traded on this platform identified the stop bracket exactly this way (a stop
+ * order whose customTag carries "-SL", status pending then working), captured its id from
+ * the user hub's order events and modified it.
  * TODO: confirm the target leg's tag ("-TP" is only in that bot's mock broker) and a link to
  * the entry order from one read-only Order/searchOpen capture of a real bracketed entry, then
  * add role "target" and `entry`. Until then a target leg, and every leg's entry, are omitted
